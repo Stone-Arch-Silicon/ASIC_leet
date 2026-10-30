@@ -1,0 +1,20 @@
+// Cloudflare Worker that serves ./dist only to signed-in members of the GitHub org.
+// The OAuth client secret is NOT here: add it in the Cloudflare dashboard as the
+// secret GITHUB_CLIENT_SECRET (Worker > Settings > Variables and Secrets).
+{
+  "name": "asic-leet",
+  "main": "worker/index.js",
+  "compatibility_date": "2025-10-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "vars": {
+    "ALLOWED_ORG": "Stone-Arch-Silicon",
+    "GITHUB_CLIENT_ID": "Ov23liQRn3ZXSE23HwFP"
+  },
+  "observability": { "enabled": true }
+}

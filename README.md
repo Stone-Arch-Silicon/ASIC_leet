@@ -19,11 +19,17 @@ python3 -m http.server 8080 --directory dist
 
 Open http://localhost:8080. Do not open index.html as a file: content loads through fetch.
 
-## GitHub Pages in Stone-Arch-Silicon/ASIC_leet
+## Hosting: members only
 
-Copy this project into that repository, retaining any existing files you need. The included `.github/workflows/pages.yml` publishes `dist` using GitHub Actions on pushes to `main` or manual dispatch. In repository **Settings → Pages → Source**, choose **GitHub Actions**. Repository permissions and Pages availability are controlled by GitHub/the organization. No repository or Pages settings were changed as part of creating this package.
+The site is served by a Cloudflare Worker at https://asic-leet.sasi-umn.workers.dev. Visitors sign in with GitHub, and only active members of the Stone-Arch-Silicon organization get past the sign-in page. To give someone access, invite them to the organization. To remove access, remove them from it (their session also expires after 7 days).
 
-All asset paths are relative, so a project URL such as `/ASIC_leet/` works. The hosting-specific `.openai` directory is intentionally excluded from the downloadable package.
+- `worker/index.js`: the sign-in gate. It asks GitHub for the `read:org` scope only, checks membership once at sign-in, revokes the GitHub token right away, and keeps a signed 7-day session cookie.
+- `wrangler.jsonc`: Worker settings. `ALLOWED_ORG` and `GITHUB_CLIENT_ID` are public values. The OAuth client secret is stored only in Cloudflare as the secret `GITHUB_CLIENT_SECRET`.
+- The OAuth app is "SASi ASIC Practice" under the organization's Settings, Developer settings, OAuth Apps. Its callback URL must stay `https://asic-leet.sasi-umn.workers.dev/auth/callback`.
+- Cloudflare builds from this repository on every push to `main` (build command `python3 make_bundle.py`, then `npx wrangler deploy`).
+- Sign out at `/auth/logout`. Tests for the gate: `node tests/worker.test.mjs`.
+
+GitHub Pages is not used: this repository is private, and the organization is on GitHub Free. All asset paths stay relative, so the local server above still works.
 
 ## Edit content
 
