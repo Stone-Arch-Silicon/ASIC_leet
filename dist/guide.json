@@ -1,0 +1,483 @@
+[
+  {
+    "title": "01 \u00b7 Server & simulation",
+    "scope": "Foundations \u00b7 organizer\u2019s notes",
+    "intro": "Commands run on the university EDA server after you log in. The setup file belongs to this course; it is not a universal Synopsys installer.",
+    "cards": [
+      {
+        "title": "Load the course environment",
+        "code": "tcsh\nsource ~/EE5327.cshrc\nwhich vcs\nwhich dc_shell",
+        "meaning": "Enter tcsh, then load the course\u2019s paths and environment. There is a space after source.",
+        "check": "Both which commands resolve to the expected installed tools. A prompt often changes from $ to %, but prompts are configurable.",
+        "ask": "Why can a tool work in one terminal and be missing in another?",
+        "note": "",
+        "shell": "Server terminal"
+      },
+      {
+        "title": "Build the simulation",
+        "code": "vcs -full64 -Mupdate -debug_access+all -kdb fa_st.v fa_gate.v",
+        "meaning": "-full64 selects a 64-bit build. -Mupdate supports incremental builds. -debug_access+all enables broad debug access. -kdb generates the debug database for Verdi integration.",
+        "check": "The log shows the intended top/testbench, no fatal errors, and a newly built simv. A successful compile is not a passing test.",
+        "ask": "What is the difference between parsing RTL, elaborating instances, and executing a simulation?",
+        "note": "These switches come from the organizer\u2019s lab notes. Use vcs -help for your installed release. Add -sverilog when compiling SystemVerilog.",
+        "shell": "Server terminal"
+      },
+      {
+        "title": "Run and inspect",
+        "code": "./simv\n# Or start the configured debug GUI:\n./simv -gui",
+        "meaning": "simv executes the compiled simulation. The GUI option opens the configured debugger; the course uses Verdi.",
+        "check": "Advance simulation time, add relevant signals, and verify clock/reset plus the failing transaction. Inspect the testbench PASS/FAIL result.",
+        "ask": "If the waveform is flat, how do you distinguish missing stimulus, stopped simulation, and missing signal capture?",
+        "note": "",
+        "shell": "Server terminal"
+      }
+    ],
+    "sources": [
+      {
+        "label": "Synopsys VCS overview",
+        "url": "https://www.synopsys.com/verification/simulation/vcs.html"
+      },
+      "Organizer-provided server / VCS command notes; Labs 1\u20132 were not attached."
+    ],
+    "steps": [
+      "Compile",
+      "Elaborate",
+      "Build simv",
+      "Run",
+      "Debug"
+    ]
+  },
+  {
+    "title": "02 \u00b7 Libraries & setup",
+    "scope": "Lab 3",
+    "intro": "DC stands for Design Compiler. Synthesis maps your RTL to technology cells; it does not finish placement, routing, or physical signoff.",
+    "cards": [
+      {
+        "title": "Tell DC where and what to use",
+        "code": "set_app_var search_path [concat $search_path ./rtl ./libs]\nset_app_var target_library \"N16ADFP_StdCelltt0p8v25c_ccs.db\"\nset_app_var link_library \"* N16ADFP_StdCelltt0p8v25c_ccs.db dw_foundation.sldb\"\ndefine_design_lib WORK -path ./work",
+        "meaning": "search_path locates files. target_library provides mapping cells. link_library resolves referenced designs/cells; * includes designs already in memory. WORK stores analyzed HDL data.",
+        "check": "Use the exact .synopsys_dc.setup spelling. Check library loading messages and unresolved references after link.",
+        "ask": "Why can a library be in link_library but not target_library?",
+        "note": "The N16 name is from the course. Library files are not included. DesignWare availability depends on installation/licensing.",
+        "shell": "DC Tcl"
+      },
+      {
+        "title": "Read a library filename",
+        "code": "",
+        "meaning": ".db is Synopsys\u2019s compiled library format. In this course name, tt indicates typical NMOS/PMOS, 0p8v means 0.8 V, 25c means 25 \u00b0C, and ccs denotes Composite Current Source modeling.",
+        "check": "Inspect the library\u2019s actual units, cells, and characterization. A filename alone is not signoff evidence.",
+        "ask": "What information is in a timing library that is not in LEF\u2014and vice versa?",
+        "note": "Liberty/.db describes functions and electrical models. LEF describes physical abstracts such as geometry and pin locations; neither substitutes for a foundry rule deck.",
+        "shell": "DC Tcl"
+      }
+    ],
+    "sources": [
+      "Uploaded Lab 3: library setup and synthesis reference flow",
+      {
+        "label": "Synopsys Design Compiler overview",
+        "url": "https://www.synopsys.com/implementation-and-signoff/rtl-synthesis-test/design-compiler.html"
+      }
+    ],
+    "steps": null
+  },
+  {
+    "title": "03 \u00b7 Read, link, synthesize",
+    "scope": "Lab 3",
+    "intro": "Keep structural checks and timing checks visible. A tool completing without errors does not prove the intended design was constrained.",
+    "cards": [
+      {
+        "title": "Construct the design",
+        "code": "analyze -format verilog {fulladd_gate.v add4_struct.v}\nelaborate add4_struct\ncurrent_design add4_struct\nlink\ncheck_design",
+        "meaning": "Analyze reads HDL; elaborate resolves the top, parameters, and hierarchy. current_design makes the target explicit. link resolves references; check_design catches structural issues.",
+        "check": "No unresolved modules, unexpected black boxes, unintended latches, multiple drivers, or undriven essential signals.",
+        "ask": "What can elaborate catch that a syntax-only check cannot?",
+        "note": "Use the module names actually present in your files. Some flows link implicitly; keep explicit link and inspect its diagnostics.",
+        "shell": "DC Tcl"
+      },
+      {
+        "title": "Map, inspect, and save",
+        "code": "compile\nreport_area\nreport_timing\nreport_constraint -all_violators\ncheck_timing\nwrite_file -format ddc -hierarchy -output mapped.ddc\nwrite_file -format verilog -hierarchy -output mapped.v\nwrite_sdc mapped.sdc\nstart_gui",
+        "meaning": "Compile maps and optimizes. Reports expose the result. Save the tool database, mapped netlist, and constraints for reproducibility.",
+        "check": "Timing is constrained; area is plausible; the chosen libraries and ports are correct. Review the worst path, not only the headline slack.",
+        "ask": "Why might positive synthesis slack become negative after routing?",
+        "note": "A .ddc is a DC database; a .v netlist and .sdc constraints have different roles. start_gui opens DC\u2019s GUI, not a waveform simulator.",
+        "shell": "DC Tcl"
+      }
+    ],
+    "sources": [
+      "Uploaded Lab 3, synthesis flow and deliverables",
+      {
+        "label": "Synopsys Design Compiler overview",
+        "url": "https://www.synopsys.com/implementation-and-signoff/rtl-synthesis-test/design-compiler.html"
+      }
+    ],
+    "steps": null
+  },
+  {
+    "title": "04 \u00b7 Timing budgets",
+    "scope": "Lab 3 \u00b7 SDC basics",
+    "intro": "Input and output delays model the surrounding system. They do not insert gates or consume a percentage of the clock automatically.",
+    "cards": [
+      {
+        "title": "Constrain a combinational block",
+        "code": "create_clock -name CLK -period 1\nset_input_delay 0.08 -clock [get_clocks CLK] [all_inputs]\nset_output_delay 0.12 -clock [get_clocks CLK] [all_outputs]",
+        "meaning": "With no source object, CLK is virtual. For this simplified max-delay example, input arrives at 0.08 and output must arrive by 0.88: internal budget is 0.80 time units.",
+        "check": "Verify library time units (ns in the lab). At 0.60 output arrival, slack is 0.88 - 0.60 = +0.28 ns.",
+        "ask": "If 0.60 is internal delay rather than arrival time, what changes?",
+        "note": "For production I/O signoff specify -min and -max from external timing requirements. This simplified lab example assumes no other latency or uncertainty.",
+        "shell": "DC Tcl"
+      },
+      {
+        "title": "Use a real clock on a sequential design",
+        "code": "create_clock -name CLK -period 2 [get_ports clk]\nset data_inputs [remove_from_collection [all_inputs] [get_ports {clk rst_n}]]\nset_input_delay -max 0.20 -clock CLK $data_inputs\nset_input_delay -min 0.05 -clock CLK $data_inputs\nset_output_delay -max 0.25 -clock CLK [all_outputs]\nset_output_delay -min -0.05 -clock CLK [all_outputs]",
+        "meaning": "Attach a clock to the actual port. Constrain data ports separately from the clock and reset. Negative output min delay can model positive external hold time in a simple zero-skew interface.",
+        "check": "These example numbers must be replaced with interface requirements. Analyze reset recovery/removal and any exceptions deliberately.",
+        "ask": "Why is applying data input delay to the clock port a mistake?",
+        "note": "Do not copy the example into an unknown design. Reset policy, clock uncertainty, generated clocks, and clock-domain relationships require separate constraints.",
+        "shell": "DC Tcl"
+      },
+      {
+        "title": "Model the environment electrically",
+        "code": "set_driving_cell -lib_cell BUFFD2BWP20P90 \\\n  -input_transition_rise 0.1 -input_transition_fall 0.1 [all_inputs]\nset_load [expr {[load_of [get_lib_pins */BUFFD2BWP20P90/I]] * 4}] [all_outputs]",
+        "meaning": "Driving-cell modeling estimates input slew from an external cell. Output load models capacitance, here four reference input-pin loads. These are separate from I/O timing delays.",
+        "check": "Ensure the library pin selection is unambiguous, units match, and load is realistic. Adapt port selection for sequential designs.",
+        "ask": "Can a circuit meet timing with an unrealistic output load? What would that prove?",
+        "note": "",
+        "shell": "DC Tcl"
+      }
+    ],
+    "sources": [
+      "Uploaded Lab 3: virtual clock, I/O delays, driving cell and load sections"
+    ],
+    "steps": null
+  },
+  {
+    "title": "05 \u00b7 Read reports",
+    "scope": "Labs 3\u20134 \u00b7 beyond",
+    "intro": "Always identify units, corner, mode, path group, and analysis stage before drawing a conclusion.",
+    "cards": [
+      {
+        "title": "Ask both timing questions",
+        "code": "report_timing -delay_type max\nreport_timing -delay_type min\nreport_constraint -all_violators\ncheck_timing",
+        "meaning": "Max-delay analysis examines setup-style requirements; min-delay analysis examines hold-style requirements. check_timing identifies missing or inconsistent timing setup.",
+        "check": "Setup slack = required - arrival. Hold slack = arrival - required. Read startpoint, endpoint, clocks, cell delay, and net delay.",
+        "ask": "Why can lowering the clock frequency fix setup but usually not a same-edge hold failure?",
+        "note": "",
+        "shell": "DC Tcl"
+      },
+      {
+        "title": "Compare methods fairly",
+        "code": "",
+        "meaning": "Record RTL revision, library/corner, SDC, compile recipe, area, WNS/TNS, violating endpoints, and power activity. Change one factor at a time.",
+        "check": "Confirm runs constrain the same paths and use the same timing/power assumptions before ranking them.",
+        "ask": "Would you choose lower area if it misses timing? How would you present the Pareto tradeoff?",
+        "note": "",
+        "shell": "DC Tcl"
+      },
+      {
+        "title": "Lab 4 optimization directives",
+        "code": "set_structure true -boolean true -timing true\ncompile -exact_map -boundary_optimization",
+        "meaning": "This is one Lab 4 recipe for timing-driven structuring with Boolean optimization. Compare against the handout\u2019s flattening experiments in separate clean runs.",
+        "check": "Compare the mapped schematic and reports. Preserve a baseline; do not mix stale constraints or directives across experiments.",
+        "ask": "How can logic sharing save area but create a high-fanout timing bottleneck?",
+        "note": "Legacy commands/options depend on release. The handout\u2019s set_flatten is logic minimization; do not confuse it with simply removing HDL hierarchy.",
+        "shell": "DC Tcl"
+      }
+    ],
+    "sources": [
+      "Uploaded Lab 4: decoder optimization experiments",
+      "Uploaded Lab 3: setup and hold reporting"
+    ],
+    "steps": null
+  },
+  {
+    "title": "06 \u00b7 FSM experiments",
+    "scope": "Lab 5 \u00b7 updated release notes",
+    "intro": "The updated lab compares explicitly pre-encoded binary and one-hot RTL. Old extracted-FSM commands shown in background sections are not a reliable current recipe.",
+    "cards": [
+      {
+        "title": "Use the supported lab path",
+        "code": "set_app_var fsm_auto_inferring true\nset_app_var fsm_enable_state_minimization true\n# Read one pre-encoded RTL variant in a clean run.\ncompile_ultra\nreport_fsm\nreport_area\nreport_timing",
+        "meaning": "Run the binary and one-hot variants separately with identical constraints, then inspect whether encoding was preserved and whether the FSM was recognized.",
+        "check": "The updated lab expects Re-Encoding style: NONE. Record state registers, area, and worst reg-to-reg slack.",
+        "ask": "Why might one-hot reduce decode depth but increase clock power?",
+        "note": "Lab 5 documents CMD-080 for set_fsm_encoding_style in syn_2022.12. Do not paste the older background FSM command chain.",
+        "shell": "DC Tcl"
+      },
+      {
+        "title": "Choose based on evidence",
+        "code": "",
+        "meaning": "Binary uses ceil(log2(N)) state bits; one-hot typically uses N. Gray-like coding can reduce switching for selected transitions, but arbitrary FSM transitions are not all one-bit changes.",
+        "check": "Check illegal-state behavior, reset, output timing, and equivalent externally visible behavior for every encoding.",
+        "ask": "Would a safety requirement change how you handle unused encodings?",
+        "note": "",
+        "shell": "DC Tcl"
+      }
+    ],
+    "sources": [
+      "Uploaded Lab 5: updated binary/one-hot RTL procedure and final questions"
+    ],
+    "steps": null
+  },
+  {
+    "title": "07 \u00b7 Scan & ATPG",
+    "scope": "Lab 6 \u00b7 legacy course flow",
+    "intro": "Functional verification checks behavior. Manufacturing test seeks modeled physical faults. TetraMAX is the course tool; newer flows and licenses may use different products.",
+    "cards": [
+      {
+        "title": "Make test intent explicit",
+        "code": "set_scan_configuration -style multiplexed_flip_flop\n# Declare actual clock/reset/test ports with set_dft_signal.\ncreate_test_protocol\ndft_drc -verbose\ncompile_ultra -scan",
+        "meaning": "Configure the scan style, declare test intent, build a protocol, and run pre-DFT checks. Test-ready synthesis can replace functional flops with scan-capable cells.",
+        "check": "Verify controllable clocks/reset and inspect unscannable registers. Scan replacement is not the same as scan-chain stitching.",
+        "ask": "Why can one uncontrollable reset make ATPG ineffective?",
+        "note": "This is a flow fragment. Supply your real scan-clock timing, active reset polarity, ports, and license-supported options.",
+        "shell": "DC Tcl"
+      },
+      {
+        "title": "Stitch and recheck",
+        "code": "set_dft_signal -view spec -type ScanDataIn -port test_si\nset_dft_signal -view spec -type ScanDataOut -port test_so\nset_dft_signal -view spec -type ScanEnable -port test_se\ncreate_test_protocol -infer_asynch -infer_clock\ndft_drc -verbose\nset_scan_configuration -replace false\ninsert_dft\ndft_drc -verbose -coverage\nreport_constraint -all_violators",
+        "meaning": "With scan-replaced flops already present, stitch the chain and recheck test rules plus functional constraints.",
+        "check": "Save matching pre/post-DFT netlists and protocols. Recheck functional equivalence, area, and timing after insertion.",
+        "ask": "What is the area and test-time tradeoff between one long chain and several shorter chains?",
+        "note": "The -replace false setting assumes the earlier test-ready compile already replaced eligible flops.",
+        "shell": "DC Tcl"
+      },
+      {
+        "title": "Generate and analyze patterns",
+        "code": "tmax -gui\n# In TetraMAX, load the library models and matching netlist.\n# Build the model, read the matching STIL protocol, and pass DRC.\n# Select the fault model, seed faults, run ATPG, then inspect classes.",
+        "meaning": "Separate build, test DRC, and ATPG. Compare basic scan, fast sequential, and full sequential with controlled settings.",
+        "check": "Check DT, UD, AU, ND and the total. Fault coverage and test coverage use different denominators.",
+        "ask": "Can 100% test coverage coexist with less than 100% fault coverage?",
+        "note": "Lab 6 mixes stuck-at instructions with transition-fault sample reports. Record the actual chosen fault model; do not compare unlike fault models.",
+        "shell": "Server terminal / TetraMAX workflow"
+      }
+    ],
+    "sources": [
+      "Uploaded Lab 6: DFT insertion, TetraMAX procedure and sample coverage reports"
+    ],
+    "steps": null
+  },
+  {
+    "title": "08 \u00b7 Activity & power",
+    "scope": "Lab 7",
+    "intro": "Dynamic power depends on activity, capacitance, voltage, and frequency. Leakage is a different component. A smaller reported number is meaningful only under comparable conditions.",
+    "cards": [
+      {
+        "title": "Describe switching honestly",
+        "code": "set_switching_activity -static_probability 0.01 \\\n  -toggle_rate 1.5625 -period 10 [get_ports enable]\nset_switching_activity -static_probability 0.5 \\\n  -toggle_rate 15.625 -period 10 [get_ports up]\nset_switching_activity -static_probability 0.995 \\\n  -toggle_rate 0.015625 -period 10 [get_ports rst]",
+        "meaning": "The updated lab\u2019s table gives P(0) and toggles per 10 ns. -static_probability is P(1), so convert using 1 - P(0).",
+        "check": "Verify design time units are ns and port names match. Inspect annotation coverage rather than assuming the activity reached every node.",
+        "ask": "Does 1.5625 toggles per interval imply a 1.5625 Hz frequency? Why not?",
+        "note": "If using a SAIF workflow beyond the lab, validate instance mapping and simulation window; reset-heavy or idle-only traces can mislead.",
+        "shell": "DC Tcl"
+      },
+      {
+        "title": "Read the power evidence",
+        "code": "report_power -analysis_effort high -verbose\nreport_saif -hier\nreport_threshold_voltage_group",
+        "meaning": "Break out internal, net switching, and leakage power. Check activity annotation and the actual cell-threshold mix.",
+        "check": "Compare area, timing, and power using the same corner, activity, clock period, and units.",
+        "ask": "If power drops but timing fails, is that an optimization success?",
+        "note": "The handout\u2019s extreme clock-period experiment is optimization pressure, not proof that the circuit operates at 1 THz.",
+        "shell": "DC Tcl"
+      }
+    ],
+    "sources": [
+      "Uploaded Lab 7, pp. 7\u201310 and 15\u201317",
+      {
+        "label": "Synopsys Power Compiler overview",
+        "url": "https://www.synopsys.com/implementation-and-signoff/rtl-synthesis-test/power-compiler.html"
+      }
+    ],
+    "steps": null
+  },
+  {
+    "title": "09 \u00b7 Clock gating & Vt",
+    "scope": "Lab 7",
+    "intro": "Clock gating targets clock-driven switching; multi-Vt selection trades delay against leakage. Neither is free.",
+    "cards": [
+      {
+        "title": "Infer integrated clock gates",
+        "code": "set_clock_gating_style -pos integrated -control_point before\ncompile_ultra -gate_clock\nreport_clock_gating\nreport_power -analysis_effort high -verbose\nreport_timing",
+        "meaning": "Use the corrected positive-edge integrated-gating style in the handout and synthesize eligible enable-controlled registers with clock gating.",
+        "check": "Confirm gates were inserted and which registers are covered. Check enable timing, test enable, area overhead, and post-CTS consequences.",
+        "ask": "Why is assign gclk = clk & enable unsafe if enable can change while clk is high?",
+        "note": "Exact ICG availability depends on the library. Clock-gating checks and test behavior still matter after insertion.",
+        "shell": "DC Tcl"
+      },
+      {
+        "title": "Explore threshold choices",
+        "code": "man set_multi_vth_constraint\nreport_threshold_voltage_group",
+        "meaning": "Use your release\u2019s documented constraint to bound low-Vt usage; inspect whether the limit applies by count or area and whether it is hard or soft.",
+        "check": "Measure the achieved mix and slack. Low-Vt often speeds cells but increases leakage; high/standard-Vt can save leakage on paths with margin.",
+        "ask": "Why is \u201creplace every cell with low-Vt\u201d a poor default?",
+        "note": "Do not guess percentage/group option names across releases. The lab requests a 10% LVT-control experiment; reproduce the exact documented local syntax.",
+        "shell": "DC Tcl"
+      }
+    ],
+    "sources": [
+      "Uploaded Lab 7: corrected gating style, Vt experiments and questions",
+      {
+        "label": "Synopsys Power Compiler overview",
+        "url": "https://www.synopsys.com/implementation-and-signoff/rtl-synthesis-test/power-compiler.html"
+      }
+    ],
+    "steps": null
+  },
+  {
+    "title": "10 \u00b7 Cadence counterpart",
+    "scope": "Beyond Lab 7 \u00b7 vendor workflows",
+    "intro": "Learn the operation, then its tool-specific command. Cadence Common UI and legacy UI differ; do not blindly translate a DC script.",
+    "cards": [
+      {
+        "title": "Simulate with Xcelium",
+        "code": "xrun -64bit -sv -gui dut.sv tb.sv",
+        "meaning": "A typical Xcelium invocation compiles, elaborates, and simulates SystemVerilog, with GUI debug.",
+        "check": "Use your local xrun help and record compile order, top module, seed, and debug-access settings.",
+        "ask": "Which parts of your testbench should stay portable between VCS and Xcelium?",
+        "note": "",
+        "shell": "Server terminal"
+      },
+      {
+        "title": "Synthesize with Genus",
+        "code": "",
+        "meaning": "Read timing libraries and HDL \u2192 elaborate top \u2192 read SDC \u2192 generic synthesis \u2192 technology mapping \u2192 optimization \u2192 reports and exports.",
+        "check": "Inspect resolved hierarchy, constraints, cell mapping, timing, and area. Use the installed Genus reference flow for exact commands.",
+        "ask": "Does a common SDC file guarantee identical results in DC and Genus?",
+        "note": "Genus uses its own library and database setup. The conceptual flow is shown here rather than an unverified, release-specific full script.",
+        "shell": "DC Tcl"
+      },
+      {
+        "title": "Implement with Innovus",
+        "code": "",
+        "meaning": "Import netlist, technology/cell abstracts, timing views and SDC \u2192 floorplan/power plan \u2192 placement \u2192 CTS \u2192 routing \u2192 extraction/signoff feedback.",
+        "check": "At each checkpoint inspect timing, congestion, utilization, power connectivity, and design-rule violations.",
+        "ask": "Why is a clean pre-CTS setup report insufficient for signoff?",
+        "note": "Use Innovus/Tempus/Quantus/Voltus for related implementation, timing, extraction, and rail-analysis tasks. They are separate analyses, even when integrated.",
+        "shell": "DC Tcl"
+      }
+    ],
+    "sources": [
+      {
+        "label": "Cadence Xcelium GUI command discussion",
+        "url": "https://community.cadence.com/cadence_technology_forums/f/logic-design/47187/what-is-the-command-for-opening-the-xcelium-simulator"
+      },
+      {
+        "label": "Cadence digital flow and tools",
+        "url": "https://www.cadence.com/en_US/home/explore/what-is-ic-design.html"
+      },
+      {
+        "label": "Cadence Innovus datasheet",
+        "url": "https://www.cadence.com/en_US/home/resources/datasheets/innovus-implementation-system-ds.html"
+      }
+    ],
+    "steps": null
+  },
+  {
+    "title": "11 \u00b7 Physical design methods",
+    "scope": "Beyond Lab 7 \u00b7 digital",
+    "intro": "Fix the cause exposed by the physical evidence. Do not apply the same optimization to every negative-slack path.",
+    "cards": [
+      {
+        "title": "Cell delay or wire delay?",
+        "code": "",
+        "meaning": "Cell dominated: consider sizing, Vt, logic restructuring, or pipelining when architecture allows. Wire dominated: investigate placement, fanout, buffering, layer choice, and routing detours.",
+        "check": "Compare the delay breakdown before/after; recheck power, hold, congestion, and all relevant corners.",
+        "ask": "Why might upsizing every gate make routing worse?",
+        "note": "",
+        "shell": "DC Tcl"
+      },
+      {
+        "title": "Floorplan and clock choices",
+        "code": "",
+        "meaning": "Explore utilization, macro orientation, channels, halos, pin placement, and power-grid access. After CTS, evaluate clock latency, skew, transition, and endpoint timing.",
+        "check": "A floorplan with low average utilization can still have a congested macro channel. Inspect local demand.",
+        "ask": "When would you change the floorplan instead of accepting another timing ECO?",
+        "note": "",
+        "shell": "DC Tcl"
+      },
+      {
+        "title": "Close across modes and corners",
+        "code": "",
+        "meaning": "Check functional/test modes, min/max timing, RC and PVT corners, crosstalk, variation, EM/IR, and physical rules. Re-extract after routing changes.",
+        "check": "Use a corner-by-corner comparison and record new violations; an ECO that improves one path can damage another.",
+        "ask": "How can useful skew help setup but hurt hold?",
+        "note": "",
+        "shell": "DC Tcl"
+      }
+    ],
+    "sources": [
+      {
+        "label": "Synopsys ICC II training: block implementation topics",
+        "url": "https://training.synopsys.com/learn/courses/997/ic-compiler-ii-block-level-implementation"
+      },
+      {
+        "label": "Synopsys PrimeTime capabilities",
+        "url": "https://www.synopsys.com/implementation-and-signoff/signoff/primetime.html"
+      },
+      {
+        "label": "Cadence Tempus datasheet",
+        "url": "https://www.cadence.com/en_US/home/resources/datasheets/tempus-timing-signoff-solution-ds.html"
+      },
+      {
+        "label": "Synopsys RedHawk-SC power integrity",
+        "url": "https://www.synopsys.com/implementation-and-signoff/signoff/redhawk-sc.html?campaignID=7013g000000YT39AAG"
+      }
+    ],
+    "steps": null
+  },
+  {
+    "title": "12 \u00b7 Analog layout loop",
+    "scope": "Beyond Lab 7 \u00b7 analog / custom PD",
+    "intro": "Analog physical design preserves electrical intent at device and interconnect level. There is no universal layout recipe independent of the circuit and PDK.",
+    "cards": [
+      {
+        "title": "Capture intent before placement",
+        "code": "",
+        "meaning": "Identify matched groups, ratios, sensitive nodes, symmetry requirements, current paths, isolation, and relevant device orientation constraints.",
+        "check": "Use unit devices where appropriate; compare centroid positions, environment, routing, contacts, and well proximity.",
+        "ask": "When might common-centroid placement be less useful than a compact, carefully routed pair?",
+        "note": "",
+        "shell": "DC Tcl"
+      },
+      {
+        "title": "DRC, LVS, extraction, simulation",
+        "code": "",
+        "meaning": "DRC checks geometry against rules. LVS checks extracted connectivity/devices against the source. PEX extracts parasitics. Post-layout simulation checks performance with those parasitics.",
+        "check": "A DRC/LVS-clean block can still fail bandwidth, offset, noise, stability, or reliability requirements.",
+        "ask": "What would you inspect if gain barely changes after layout but phase margin collapses?",
+        "note": "",
+        "shell": "DC Tcl"
+      },
+      {
+        "title": "Use corners and mismatch analysis",
+        "code": "",
+        "meaning": "Run appropriate process/voltage/temperature corners and statistical mismatch analysis with foundry-supported models. Compare schematic and extracted results using matched conditions.",
+        "check": "A corner sweep and Monte Carlo answer different questions. Track yield assumptions and sample size rather than claiming certainty from a handful of runs.",
+        "ask": "Can a common-centroid layout eliminate random mismatch?",
+        "note": "Cadence: Virtuoso, Spectre, Quantus, Pegasus/PVS. Synopsys: Custom Compiler, PrimeSim, StarRC, IC Validator. Follow the licensed PDK-qualified flow.",
+        "shell": "DC Tcl"
+      }
+    ],
+    "sources": [
+      {
+        "label": "Cadence Virtuoso Layout Suite",
+        "url": "https://www.cadence.com/en_US/home/tools/custom-ic-analog-rf-design/layout-design/virtuoso-layout-suite.html"
+      },
+      {
+        "label": "Cadence Virtuoso layout capabilities",
+        "url": "https://www.cadence.com/en_US/home/resources/datasheets/virtuoso-layout-suite-ds.html"
+      },
+      {
+        "label": "Synopsys analog design platform",
+        "url": "https://www.synopsys.com/glossary/what-is-analog-design.html"
+      }
+    ],
+    "steps": [
+      "Intent",
+      "Layout",
+      "DRC / LVS",
+      "PEX",
+      "Post-layout simulation"
+    ]
+  }
+]

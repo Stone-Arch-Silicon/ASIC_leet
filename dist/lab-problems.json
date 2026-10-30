@@ -1,0 +1,935 @@
+[
+  {
+    "id": "L01",
+    "track": "Verification",
+    "title": "Compile is not a passing test",
+    "level": "Easy",
+    "kind": "Debug",
+    "lab": "Foundations",
+    "minutes": 7,
+    "prompt": "Explain each command and flag. A simv executable exists, but no PASS message appears. What evidence would establish a successful simulation?",
+    "artifact": "tcsh\nsource ~/EE5327.cshrc\nvcs -full64 -Mupdate -debug_access+all -kdb fa_st.v fa_gate.v\n./simv -gui\n# Log ends: simulation stopped at time 0",
+    "hint": "Build success establishes something different from a scoreboard passing.",
+    "solution": [
+      "tcsh starts the C shell; source loads the course environment into that shell. The space after source is required. Prompt characters depend on shell configuration.",
+      "VCS compiles HDL, elaborates the hierarchy, and builds simv. -full64 selects 64-bit operation; -Mupdate enables incremental compilation; -debug_access+all enables broad debug visibility; -kdb generates the debug database used by Verdi.",
+      "./simv -gui launches simulation with a supported GUI; the installed configuration determines GUI integration. Check the selected testbench top, stimulus, clock, reset, run command, and termination condition.",
+      "Require actual comparisons, an executed test count, a failure count of zero, and a reachable PASS condition. A waveform or executable alone is insufficient."
+    ],
+    "rubric": [
+      "Distinguishes compilation, elaboration, and execution.",
+      "Explains every supplied flag without calling -kdb a simulation result.",
+      "Names at least three causes of a time-zero stop.",
+      "Defines objective pass/fail evidence."
+    ],
+    "followups": [
+      "How would you prove your checker can fail?",
+      "Why might incremental compilation reuse stale results if the flow or file list is wrong?"
+    ],
+    "theory": [
+      "Elaboration resolves modules, parameters, and hierarchy.",
+      "A simulation can complete successfully while testing nothing."
+    ],
+    "sources": [
+      "User-provided VCS/server notes; foundations extension (Labs 1–2 not attached)."
+    ],
+    "starter": ""
+  },
+  {
+    "id": "L02",
+    "track": "Digital PD",
+    "title": "Repair the synthesis setup",
+    "level": "Easy",
+    "kind": "Debug",
+    "lab": "Lab 3",
+    "minutes": 8,
+    "prompt": "Find the setup mistakes. Explain which library supplies mapping cells and which resolves module/cell references.",
+    "artifact": ".synopsis_dc.setup\nset_app_var search_path ./rtl\nset_app_var target_library \"stdcells_tt.db\"\nset_app_var link_library \"stdcells_tt.db\"\ndefine_design_lib WORK -path ./work\n# RTL top instantiates a previously analyzed child module.",
+    "hint": "The spelling of the startup filename and the star in link_library both matter.",
+    "solution": [
+      "Use .synopsys_dc.setup. Keep course/server-specific paths configurable rather than assuming a library exists everywhere.",
+      "search_path identifies directories searched for inputs. Preserve needed existing entries when extending it. target_library specifies cells available for technology mapping.",
+      "link_library is used for reference resolution. Include * to search loaded designs as well as the named technology libraries; add required macro/IP libraries.",
+      "WORK is the analyzed-HDL design library; it is not the foundry standard-cell library. Check unresolved references after link."
+    ],
+    "rubric": [
+      "Corrects the startup filename.",
+      "Distinguishes search_path, target_library, and link_library.",
+      "Explains the * entry and loaded child designs.",
+      "Distinguishes WORK from a technology library."
+    ],
+    "followups": [
+      "Can a memory macro belong in link_library but not target_library? Why?",
+      "What breaks if the same cell name appears in several incompatible libraries?"
+    ],
+    "theory": [
+      "A .db is compiled logical-library data, not a placed layout.",
+      "Logical timing/power data and physical routing abstracts serve different purposes."
+    ],
+    "sources": [
+      "Lab 3, setup and library sections; pp. 20–21 questions."
+    ],
+    "starter": "",
+    "solutionCode": "set_app_var search_path [concat $search_path [list ./rtl ./lib]]\nset_app_var target_library [list stdcells_tt.db]\nset_app_var link_library [concat [list *] $target_library]\ndefine_design_lib WORK -path ./work"
+  },
+  {
+    "id": "L03",
+    "track": "RTL",
+    "title": "Trace RTL into a mapped netlist",
+    "level": "Easy",
+    "kind": "Code",
+    "lab": "Lab 3",
+    "minutes": 8,
+    "prompt": "Order the synthesis steps, explain their outputs, and identify the two steps that should expose an unknown module before trusting reports.",
+    "artifact": "top: add4_struct\nsources: fulladd_gate.v add4_struct.v\navailable commands:\ncompile | link | check_design | current_design\nanalyze | elaborate | report_area | report_timing",
+    "hint": "First parse HDL, then instantiate the selected hierarchy, then resolve it.",
+    "solution": [
+      "Analyze parses and stores HDL. Elaborate builds the parameterized design hierarchy. current_design explicitly selects the object to operate on.",
+      "link resolves module and cell references; inspect its diagnostics. check_design checks structural consistency; inspect warnings instead of merely running it.",
+      "compile optimizes and technology maps the design. Then inspect area, timing, and constraint coverage. A positive slack is meaningful only with valid constraints."
+    ],
+    "rubric": [
+      "Gives an executable ordered command sequence.",
+      "Explains elaborate versus compile.",
+      "Requires checking link/check_design results.",
+      "Does not infer physical signoff from synthesis reports."
+    ],
+    "followups": [
+      "Why can link succeed while your design is still logically incorrect?",
+      "Why explicitly set current_design in a reusable script?"
+    ],
+    "theory": [
+      "Technology mapping chooses standard-cell implementations.",
+      "Simulation and structural checks address different failure classes."
+    ],
+    "sources": [
+      "Lab 3, synthesis flow and reference-flow sections."
+    ],
+    "starter": "",
+    "solutionCode": "analyze -format verilog {fulladd_gate.v add4_struct.v}\nelaborate add4_struct\ncurrent_design add4_struct\nlink\ncheck_design\ncompile\nreport_area\nreport_timing"
+  },
+  {
+    "id": "L04",
+    "track": "Digital PD",
+    "title": "Read the virtual-clock budget",
+    "level": "Easy",
+    "kind": "Report",
+    "lab": "Lab 3",
+    "minutes": 8,
+    "prompt": "Find the maximum internal input-to-output delay and slack for this purely combinational block. Explain what the virtual clock represents. Assume ns and no other uncertainty or latency.",
+    "artifact": "create_clock -name CLK -period 1\nset_input_delay 0.08 -clock CLK [all_inputs]\nset_output_delay 0.12 -clock CLK [all_outputs]\n\nSynthetic max-path report:\ninput external delay      0.08\ncombinational delay       0.52\ndata arrival time         0.60\ndata required time        0.88",
+    "hint": "Required time minus arrival time is setup slack.",
+    "solution": [
+      "The internal budget is 1.00 − 0.08 − 0.12 = 0.80 ns.",
+      "The external input delay contributes to arrival time; output delay reserves time for the receiving external path. Neither inserts a physical gate into the design.",
+      "Slack is 0.88 − 0.60 = +0.28 ns. The virtual clock has no attached design port and provides a timing reference for external I/O relationships."
+    ],
+    "rubric": [
+      "Calculates 0.80 ns internal budget.",
+      "Calculates +0.28 ns slack.",
+      "Explains input/output delay as external timing budgets.",
+      "Explains why a combinational design can have a timing clock."
+    ],
+    "followups": [
+      "What changes when you add clock uncertainty?",
+      "What additional information is needed to check a minimum-delay path?"
+    ],
+    "theory": [
+      "A clock period is expressed in the timing library/tool time unit.",
+      "A virtual clock does not create flip-flops or a physical clock tree."
+    ],
+    "sources": [
+      "Lab 3, pp. 12–13 and virtual-clock question on p. 20."
+    ],
+    "starter": "",
+    "numeric": {
+      "label": "Setup slack",
+      "answer": 0.28,
+      "tolerance": 0.001,
+      "unit": "ns",
+      "explanation": "0.88 ns required − 0.60 ns arrival = 0.28 ns."
+    }
+  },
+  {
+    "id": "L05",
+    "track": "Digital PD",
+    "title": "Timing load is not an I/O delay",
+    "level": "Medium",
+    "kind": "Design",
+    "lab": "Lab 3",
+    "minutes": 10,
+    "prompt": "Explain what each constraint models. Predict why changing the load can worsen timing even though the output-delay value stays fixed. Identify a risk in the wildcard library-pin lookup.",
+    "artifact": "set_driving_cell -lib_cell BUFFD2BWP20P90 \\\n  -input_transition_rise 0.1 -input_transition_fall 0.1 [all_inputs]\nset_load [expr {[load_of [get_lib_pins */BUFFD2BWP20P90/I]] * 4}] [all_outputs]\nset_output_delay 0.12 -clock CLK [all_outputs]",
+    "hint": "One describes the source, one the electrical destination, and one the external time budget.",
+    "solution": [
+      "set_driving_cell models an external source cell; it helps estimate input slew and load-dependent source behavior. The transition options describe the transition at the driving cell input, not a physical buffer inserted inside the block.",
+      "set_load assigns external capacitance; here it is four times the referenced input-pin capacitance. Check units and ensure the query resolves the intended single pin.",
+      "set_output_delay reserves external timing budget. Increasing capacitance can increase final-stage delay and slew, causing resizing or buffering even when the time budget is unchanged.",
+      "A wildcard can match several libraries or corners. Use a fully qualified library/pin and verify the collection before applying the constraint."
+    ],
+    "rubric": [
+      "Separates electrical loading from timing budgets.",
+      "Does not claim set_driving_cell inserts a buffer.",
+      "Predicts delay/slew effects and possible area/power cost.",
+      "Detects ambiguous wildcard results."
+    ],
+    "followups": [
+      "Why should clocks usually be excluded from a blanket data-input driver constraint?",
+      "How would you detect a result obtained with an unrealistically weak or strong driver?"
+    ],
+    "theory": [
+      "Cell delay depends on input transition and output load.",
+      "Report units before interpreting capacitance numbers."
+    ],
+    "sources": [
+      "Lab 3, driver/load constraints sections."
+    ],
+    "starter": ""
+  },
+  {
+    "id": "L06",
+    "track": "Digital PD",
+    "title": "The positive-slack trap",
+    "level": "Medium",
+    "kind": "Debug",
+    "lab": "Lab 4",
+    "minutes": 10,
+    "prompt": "Is this design ready? Prioritize the next checks and explain why one positive setup path does not settle the question.",
+    "artifact": "Synthetic summary:\nreport_timing -delay_type max: worst slack +0.18 ns\ncheck_timing: 12 unconstrained endpoints\nreport_constraint: 4 max_transition violations\nreport_timing -delay_type min: worst slack -0.04 ns\nNo post-route parasitics loaded",
+    "hint": "Look for missing coverage, minimum-delay failures, and electrical limits.",
+    "solution": [
+      "No. First resolve unconstrained endpoints and verify all intended clocks, generated clocks, I/O delays, and timing exceptions. An unconstrained path is not a passing path.",
+      "Investigate and fix the −0.04 ns hold violation without breaking setup; inspect the actual launch/capture relationship and min corner.",
+      "Fix max-transition violations and recheck all relevant modes/corners. Synthesis timing without extracted routing parasitics is not post-route signoff."
+    ],
+    "rubric": [
+      "Rejects signoff based on one max-delay result.",
+      "Prioritizes constraint completeness.",
+      "Identifies hold and transition violations.",
+      "States the extraction/signoff limitation."
+    ],
+    "followups": [
+      "Would lowering frequency fix this hold violation? Why generally not?",
+      "How can an incorrect false path make WNS look better?"
+    ],
+    "theory": [
+      "Setup checks maximum delay; hold checks minimum delay.",
+      "A constraint report and a timing report answer different questions."
+    ],
+    "sources": [
+      "Lab 3, pp. 20–21; Lab 4, optimization constraints."
+    ],
+    "starter": ""
+  },
+  {
+    "id": "L07",
+    "track": "Digital PD",
+    "title": "Choose a decoder implementation",
+    "level": "Medium",
+    "kind": "Report",
+    "lab": "Lab 4",
+    "minutes": 12,
+    "prompt": "Choose a candidate for a 60-unit area limit and nonnegative setup slack. Explain how you would make this comparison reproducible and what to check before accepting the result.",
+    "artifact": "Synthetic 5-to-32 decoder sweep; identical corner/constraints:\nRun                         Cell area    Worst slack(ns)\nBaseline                      56.0          -0.08\nFlatten, single output        48.0          -0.14\nTiming-driven structure       62.0          +0.06\nTwo-pass optimization         58.0          +0.02\nNote: legacy directives depend on installed DC release.",
+    "hint": "An area winner can violate timing; a timing winner can violate area.",
+    "solution": [
+      "The two-pass result is the only listed candidate meeting both limits: 58.0 area and +0.02 ns slack.",
+      "Flattening/Boolean minimization and timing-driven restructuring can produce different sharing, logic depth, fanout, and buffering. There is no universal winner.",
+      "Use the same RTL behavior, library/corner, driver/load, timing constraints, tool version, and reporting stage. Preserve separate logs and output directories.",
+      "Confirm equivalence/functional behavior, constraint coverage, electrical limits, and all relevant path groups. The 20 ps margin may be fragile after physical implementation."
+    ],
+    "rubric": [
+      "Chooses the only feasible candidate.",
+      "Explains area-versus-depth/fanout tradeoffs.",
+      "Holds experiment conditions constant.",
+      "Treats synthesis margin as provisional."
+    ],
+    "followups": [
+      "When does common logic sharing hurt timing?",
+      "Why might physical synthesis reverse this ranking?"
+    ],
+    "theory": [
+      "set_max_area 0 asks for aggressive area reduction; it does not mean a nonempty circuit can physically occupy zero area.",
+      "Legacy set_flatten/set_structure recipes should be checked against installed help."
+    ],
+    "sources": [
+      "Lab 4, decoder optimization experiments and comparison table."
+    ],
+    "starter": "",
+    "numeric": {
+      "label": "Area of the feasible candidate",
+      "answer": 58,
+      "tolerance": 0.001,
+      "unit": "library area units",
+      "explanation": "The two-pass result satisfies both area ≤60 and slack ≥0."
+    }
+  },
+  {
+    "id": "L08",
+    "track": "RTL",
+    "title": "Nine states: binary or one-hot?",
+    "level": "Medium",
+    "kind": "Report",
+    "lab": "Lab 5",
+    "minutes": 10,
+    "prompt": "Compute the minimum binary state-register width and compare the candidates. The output interface requires nonnegative slack in every path group. Explain whether one-hot is automatically better.",
+    "artifact": "Synthetic nine-state Mealy FSM:\nEncoding  State FFs  Total area  Output slack  Reg2reg slack\nBinary        4        30.0       +0.04 ns       -0.03 ns\nOne-hot       9        37.0       -0.02 ns       +0.09 ns\nFSM report for both: Re-Encoding style : NONE",
+    "hint": "A faster reg2reg path can coexist with a slower output path.",
+    "solution": [
+      "ceil(log2(9)) = 4 state bits; one-hot starts with nine bits for nine states. Optimization can alter the final mapped flop count, so verify reports.",
+      "Neither candidate meets all timing requirements. One-hot improves the shown reg2reg path but violates the output requirement and uses more area.",
+      "Re-Encoding style: NONE is expected when the flow uses the provided pre-encoded RTL without tool re-encoding. Compare output decoding, input dependence, logic depth, fanout, and constraints before choosing."
+    ],
+    "rubric": [
+      "Computes four binary state bits.",
+      "Recognizes that neither run meets all requirements.",
+      "Explains why one-hot is not universally faster or smaller.",
+      "Interprets NONE correctly for this lab."
+    ],
+    "followups": [
+      "Can a one-hot design consume less total area despite more flip-flops?",
+      "How does a Moore output change the critical path compared with a Mealy output?"
+    ],
+    "theory": [
+      "Mealy outputs depend on state and inputs; Moore outputs depend on state.",
+      "One-hot often simplifies decoding, at the cost of more state storage and clock load."
+    ],
+    "sources": [
+      "Lab 5, pp. 11–13 (updated experiment and report questions)."
+    ],
+    "starter": "",
+    "numeric": {
+      "label": "Minimum binary state bits",
+      "answer": 4,
+      "tolerance": 0.001,
+      "unit": "bits",
+      "explanation": "ceil(log2(9)) = 4."
+    }
+  },
+  {
+    "id": "L09",
+    "track": "RTL",
+    "title": "The disabled FSM command",
+    "level": "Easy",
+    "kind": "Debug",
+    "lab": "Lab 5",
+    "minutes": 8,
+    "prompt": "Recover this experiment without pretending the old command is supported. Describe how to run a fair binary-versus-one-hot comparison without overwriting evidence.",
+    "artifact": "dc_shell> set_fsm_encoding_style one_hot\nError: Command is disabled. (CMD-080)\nInstalled lab release: syn_2022.12\nAvailable files: mealy_binary.v, mealy_onehot.v\nFlow reads all RTL under ./inputs/rtl/; top is mealy.",
+    "hint": "The updated handout supplies the encoding in RTL.",
+    "solution": [
+      "Stage exactly one supplied implementation as ./inputs/rtl/mealy.v for each run; do not analyze two definitions of module mealy together.",
+      "Use the lab flow with fsm_auto_inferring and fsm_enable_state_minimization as specified. Those controls do not mean the disabled command has become available.",
+      "Preserve reports, outputs, and logs under distinct binary/one-hot run names before rerunning. Keep constraints and library settings identical.",
+      "Check report_fsm and the mapped state register to establish what synthesis actually did; expect Re-Encoding style: NONE in this lab."
+    ],
+    "rubric": [
+      "Uses pre-encoded RTL instead of retrying unsupported syntax.",
+      "Avoids duplicate module definitions.",
+      "Preserves both result sets.",
+      "Verifies the final FSM report."
+    ],
+    "followups": [
+      "What evidence would show that state minimization changed the machine?",
+      "How would you preserve a manually chosen encoding in a different tool release?"
+    ],
+    "theory": [
+      "Tool commands can be removed, disabled, or license-dependent.",
+      "The installed command reference and actual logs outrank an old handout recipe."
+    ],
+    "sources": [
+      "Lab 5, pp. 11–13: explicit syn_2022.12 CMD-080 note."
+    ],
+    "starter": ""
+  },
+  {
+    "id": "L10",
+    "track": "RTL",
+    "title": "Prove two FSM states equivalent",
+    "level": "Medium",
+    "kind": "Design",
+    "lab": "Lab 5",
+    "minutes": 12,
+    "prompt": "For the Mealy state table, decide whether A and B may be merged. Then explain why matching only their current outputs is insufficient.",
+    "artifact": "Input x | A: output,next | B: output,next | C: output,next\n   0    |      0,C       |      0,C       |      0,C\n   1    |      1,D       |      1,D       |      1,E\nD and E are behaviorally distinguishable.\nReset enters A. No externally visible state-debug port.",
+    "hint": "Compare both output behavior and next-state equivalence for every input.",
+    "solution": [
+      "A and B are equivalent here: for each input they produce the same output and transition to the same next state. They can be merged while preserving external behavior.",
+      "A and C cannot be merged merely because their listed output bits match: for x=1 they reach D and E, which are distinguishable by a later input sequence.",
+      "After minimization, verify reset behavior, reachable-state behavior, and any contractual state observability. Use sequential equivalence or exhaustive checking for the small FSM."
+    ],
+    "rubric": [
+      "Merges A/B with an all-input argument.",
+      "Rejects A/C because of future behavior.",
+      "Considers reset and observability.",
+      "Names a verification method."
+    ],
+    "followups": [
+      "How do unreachable states affect minimization?",
+      "Why could an external debug-state output make a merge illegal?"
+    ],
+    "theory": [
+      "State equivalence concerns complete future input/output behavior.",
+      "Unused encodings still need a deliberate safety/recovery policy when faults are in scope."
+    ],
+    "sources": [
+      "Lab 5, state minimization background and updated report questions."
+    ],
+    "starter": ""
+  },
+  {
+    "id": "L11",
+    "track": "Verification",
+    "title": "Reset changed the hardware",
+    "level": "Medium",
+    "kind": "Debug",
+    "lab": "Lab 3",
+    "minutes": 10,
+    "prompt": "Explain the behavioral and mapped-cell difference. Design a short test that distinguishes these two modules without waiting for a rising clock edge.",
+    "artifact": "// Version A\nalways @(posedge clk or negedge rst_n)\n  if (!rst_n) q <= 1'b1;\n  else        q <= d;\n\n// Version B\nalways @(posedge clk)\n  if (!rst_n) q <= 1'b1;\n  else        q <= d;",
+    "hint": "Notice both the sensitivity list and the reset value.",
+    "solution": [
+      "A has an asynchronous active-low control that sets q to 1; B has synchronous reset-to-one behavior. Do not call A an asynchronous clear-to-zero.",
+      "Drive q to 0, then assert rst_n low between clock edges. After the nonblocking update, A becomes 1 immediately; B remains 0 until the next rising edge.",
+      "Mapping depends on available cells: A needs suitable asynchronous set/preset behavior; B can use a synchronous-control cell or a data-input mux. Inspect mapped cells and schematics.",
+      "Check asynchronous reset deassertion recovery/removal and the reset-release strategy; simulation of RTL alone does not establish metastability safety."
+    ],
+    "rubric": [
+      "Distinguishes async versus sync behavior.",
+      "Notices reset-to-one/preset semantics.",
+      "Provides a between-edge test.",
+      "Discusses library mapping and release timing."
+    ],
+    "followups": [
+      "Why might reset deassertion need synchronization?",
+      "What changes if reset and data change at the same simulation timestamp?"
+    ],
+    "theory": [
+      "Nonblocking assignments update in the NBA region.",
+      "Reset polarity and reset value are independent properties."
+    ],
+    "sources": [
+      "Lab 3, p. 21 reset comparison."
+    ],
+    "starter": ""
+  },
+  {
+    "id": "L12",
+    "track": "Verification",
+    "title": "Functional coverage is not fault coverage",
+    "level": "Medium",
+    "kind": "Report",
+    "lab": "Lab 6",
+    "minutes": 10,
+    "prompt": "Compute fault coverage and test coverage using the stated definitions. Explain why neither proves the RTL meets its specification.",
+    "artifact": "Synthetic ATPG summary (no partially detected faults):\nDetected faults                       282\nProven undetectable faults              16\nOther undetected faults                 0\nTotal faults                          298\n\nFor this exercise:\nfault coverage = detected / total\ntest coverage = detected / (total − proven undetectable)",
+    "hint": "The denominator changes; the design behavior has not been proved.",
+    "solution": [
+      "Fault coverage = 282/298 × 100 = 94.63%. Test coverage = 282/(298−16) × 100 = 100%.",
+      "Manufacturing fault coverage measures detection under a specified fault model, such as stuck-at or transition. Functional coverage measures exercised behaviors in a verification plan.",
+      "A perfect score within one fault model does not prove absence of every physical defect, and neither ATPG score proves functional correctness. Always report the fault model, exclusions, and coverage definitions."
+    ],
+    "rubric": [
+      "Calculates both percentages with the right denominators.",
+      "Distinguishes functional coverage from manufacturing fault coverage.",
+      "States the fault-model limitation.",
+      "Avoids calling undetectable faults detected."
+    ],
+    "followups": [
+      "Why might two tools report different test coverage for the same raw counts?",
+      "What faults could stuck-at ATPG miss that transition testing targets?"
+    ],
+    "theory": [
+      "ATPG needs controllability and observability.",
+      "Coverage metrics require definitions and classification rules, especially with partially detected faults."
+    ],
+    "sources": [
+      "Lab 6, pp. 21–23 sample coverage reports."
+    ],
+    "starter": "",
+    "numeric": {
+      "label": "Fault coverage",
+      "answer": 94.6308724832,
+      "tolerance": 0.01,
+      "unit": "%",
+      "explanation": "282 ÷ 298 × 100 = 94.63%."
+    }
+  },
+  {
+    "id": "L13",
+    "track": "Verification",
+    "title": "Why basic scan detects nothing",
+    "level": "Medium",
+    "kind": "Debug",
+    "lab": "Lab 6",
+    "minutes": 12,
+    "prompt": "Explain the result and choose the next experiment. Do not assume the ATPG engine is broken.",
+    "artifact": "Synthetic pre-DFT sequential counter:\nEngine             Detected / total    Patterns\nBasic scan                0 / 298          0\nFast sequential         231 / 298         20\nFull sequential         282 / 298         35\nProven undetectable: 16\nScan chains in this netlist: 0",
+    "hint": "How does each method reach internal sequential state?",
+    "solution": [
+      "Basic-scan ATPG expects scan access to make state controllable/observable; an unscanned counter can prevent useful detections in that mode. Sequential engines can search multi-cycle sequences.",
+      "Check libraries, selected top, test clocks/reset, protocol, and test DRC before attributing all failures to lack of scan.",
+      "Run DFT insertion, validate the scan chain and protocol, then compare pre/post DFT under the same fault model and options. Track coverage, patterns, runtime, and area/timing overhead.",
+      "Full sequential gives higher coverage in this example but costs more search effort; these numbers are an illustrative result, not a guaranteed engine ranking."
+    ],
+    "rubric": [
+      "Connects scan access to state controllability/observability.",
+      "Checks setup/DRC as well as algorithm choice.",
+      "Defines a fair pre/post experiment.",
+      "Acknowledges runtime and hardware overhead."
+    ],
+    "followups": [
+      "Why can full sequential ATPG struggle on a large design?",
+      "How can asynchronous reset block scan shifting?"
+    ],
+    "theory": [
+      "Scan converts internal sequential state into serially accessible test state.",
+      "Test modes must control clocks and resets predictably."
+    ],
+    "sources": [
+      "Lab 6, pp. 18–25 ATPG experiments."
+    ],
+    "starter": ""
+  },
+  {
+    "id": "L14",
+    "track": "Verification",
+    "title": "Repair the scan insertion sequence",
+    "level": "Medium",
+    "kind": "Code",
+    "lab": "Lab 6",
+    "minutes": 12,
+    "prompt": "Outline the missing checks and outputs. Explain why a test-ready compile is not proof that a valid stitched scan chain exists.",
+    "artifact": "read RTL and constraints\ncompile_ultra -scan\nwrite gate_netlist.v\nrun ATPG\n# No test protocol, no scan ports, no DFT DRC report saved.",
+    "hint": "Scan-cell replacement, chain stitching, and ATPG setup are different steps.",
+    "solution": [
+      "Define test clocks/reset and scan intent, create a test protocol, and run pre-insertion DFT DRC. Resolve violations instead of ignoring them.",
+      "The lab uses compile_ultra -scan for scan-ready mapping, then specifies ScanDataIn, ScanDataOut, and ScanEnable and calls insert_dft for scan insertion/stitching. Exact options depend on the installed release and flow.",
+      "Run post-insertion DFT DRC and scan checks; compare functional timing/area. Export the matching post-DFT netlist and STIL protocol (.spf in this lab).",
+      "ATPG must read matching library models, netlist, top, and protocol, build its model, and pass test DRC before generating patterns."
+    ],
+    "rubric": [
+      "Separates scan-ready compile from insert_dft.",
+      "Includes pre/post DFT checks.",
+      "Exports a matching netlist/protocol pair.",
+      "Checks functional overhead."
+    ],
+    "followups": [
+      "Why is using a pre-DFT protocol with a post-DFT netlist dangerous?",
+      "When do multiple scan clock domains need special handling?"
+    ],
+    "theory": [
+      "A scan flip-flop normally selects functional D or serial scan data.",
+      "Scan enable is a test control, not a functional clock."
+    ],
+    "sources": [
+      "Lab 6, pp. 10–18 DFT reference flow."
+    ],
+    "starter": ""
+  },
+  {
+    "id": "L15",
+    "track": "Verification",
+    "title": "A scan-chain off-by-one",
+    "level": "Medium",
+    "kind": "Code",
+    "lab": "Lab 6",
+    "minutes": 12,
+    "prompt": "Write a checker for this four-bit scan chain. Define bit order, shifting, capture, and observation timing before coding. Show the expected shifted-out sequence for the initial state.",
+    "artifact": "always_ff @(posedge clk)\n  if (scan_en) q <= {q[2:0], scan_in};\n  else         q <= functional_d;\nassign scan_out = q[3];\n\nInitial q = 4'b1011\nscan_in sequence = 0,0,1,1\nObserve scan_out immediately BEFORE each rising shift edge.",
+    "hint": "Each observation is the old most-significant bit, not the value after shifting.",
+    "solution": [
+      "The observed sequence is 1,0,1,1. After all four shifts, q is 0011.",
+      "Maintain a four-bit software/model register. Before each shift edge compare scan_out with model[3], then update model = {model[2:0], scan_in}.",
+      "For capture, deassert scan_en, drive functional_d, allow one functional edge, and set the model to the captured data. Then resume shifting and compare the resulting bits.",
+      "Avoid testbench races by driving away from the active edge and sampling with a defined timing discipline. Include all-zero/all-one, alternating, capture, and reset interactions."
+    ],
+    "rubric": [
+      "Gets shifted-out bit order and final state correct.",
+      "Checks the old state at the specified sampling point.",
+      "Covers functional capture and serial unload.",
+      "Avoids active-edge stimulus/check races."
+    ],
+    "followups": [
+      "What bug appears if the checker samples after the NBA update?",
+      "How would you detect an inverted link between two scan cells?"
+    ],
+    "theory": [
+      "Serial scan tests need an explicit bit-order convention.",
+      "A passing shift test alone does not test functional capture."
+    ],
+    "sources": [
+      "Lab 6 scan-design concepts; original verification extension."
+    ],
+    "starter": "",
+    "numeric": {
+      "label": "Final q as an unsigned decimal integer",
+      "answer": 3,
+      "tolerance": 0.001,
+      "unit": "",
+      "explanation": "The serial inputs shift into q[0]; after four edges q = 0011."
+    }
+  },
+  {
+    "id": "L16",
+    "track": "Digital PD",
+    "title": "Parse an area report with Tcl",
+    "level": "Medium",
+    "kind": "Code",
+    "lab": "Lab 6",
+    "minutes": 15,
+    "prompt": "Write a standalone Tcl script that reads a filename from argv, prints Total cell area, accepts scientific notation, and fails clearly when the field is missing. Do not accidentally parse a subtotal.",
+    "artifact": "Synthetic area.rpt:\nCombinational area:             17.20\nNoncombinational area:          6.10\nTotal cell area:                2.3300e+01\nTotal area:                    undefined\n\nRun: tclsh area.tcl area.rpt",
+    "hint": "Anchor the field name and validate the captured numeric token.",
+    "solution": [
+      "Match only the full Total cell area label; the Total area field may include unavailable interconnect area.",
+      "Validate command-line arguments and numeric text. Support signs, decimals, and exponents; report missing/malformed data instead of substituting zero.",
+      "Close the input and print the matched value. This fixture should produce 2.3300e+01, numerically 23.3."
+    ],
+    "rubric": [
+      "Reads an argv-supplied filename.",
+      "Matches the exact total-cell-area field.",
+      "Supports scientific notation.",
+      "Errors on missing or malformed fields."
+    ],
+    "followups": [
+      "How would you distinguish a valid zero-area block from a parser failure?",
+      "What will you do when a tool release changes the report label?"
+    ],
+    "theory": [
+      "Structured data exports are preferable when available; report parsers still need explicit format checks.",
+      "Cell area is not automatically die or core area."
+    ],
+    "sources": [
+      "Lab 6, p. 25 Tcl area-report assignment."
+    ],
+    "starter": "set filename [lindex $argv 0]\n# Read, match, validate, print.\n",
+    "numeric": {
+      "label": "Total cell area",
+      "answer": 23.3,
+      "tolerance": 0.001,
+      "unit": "library area units",
+      "explanation": "2.3300e+01 = 23.3."
+    },
+    "solutionCode": "if {[llength $argv] != 1} {error \"Usage: tclsh area.tcl report.rpt\"}\nset f [open [lindex $argv 0] r]\nset text [read $f]\nclose $f\nset value \"\"\nforeach line [split $text \"\\n\"] {\n    if {[regexp {^\\s*Total cell area:\\s*(\\S+)\\s*$} $line -> token]} {\n        if {![regexp {^[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?$} $token]} {\n            error \"Malformed Total cell area: $token\"\n        }\n        set value $token\n        break\n    }\n}\nif {$value eq \"\"} {error \"Total cell area field not found\"}\nputs $value"
+  },
+  {
+    "id": "L17",
+    "track": "Digital PD",
+    "title": "Annotate activity without guessing units",
+    "level": "Medium",
+    "kind": "Code",
+    "lab": "Lab 7",
+    "minutes": 12,
+    "prompt": "Write activity annotations using a 10 ns observation window. The tool time unit is ns. Explain why the probability column cannot be copied directly into -static_probability.",
+    "artifact": "Signal    Toggles per 10 ns   Probability of logic 0\nenable         1.5625                 0.99\nup            15.625                  0.50\nrst            0.015625               0.005\n# These are average counts, so fractional toggles are allowed.",
+    "hint": "The command asks for probability of logic 1.",
+    "solution": [
+      "Use P(1)=1−P(0): enable 0.01, up 0.50, rst 0.995. Do not confuse a signal named rst with a particular polarity.",
+      "-toggle_rate is the number of transitions over the supplied -period in this annotation form. Fractional averages are valid; -period 10 is 10 ns only because units are specified here.",
+      "Inspect report_saif/activity coverage and report_power. Verify reset activity represents the actual operating workload, rather than an accidental mostly-asserted reset."
+    ],
+    "rubric": [
+      "Converts all three probabilities correctly.",
+      "Uses the stated 10 ns window.",
+      "Distinguishes average toggle count from probability.",
+      "Checks annotation coverage and reset meaning."
+    ],
+    "followups": [
+      "How would you express 1.5625 toggles per cycle of a clock whose period is unknown?",
+      "Why can vectorless activity propagation miss correlation and glitches?"
+    ],
+    "theory": [
+      "Static probability and toggle rate are separate inputs.",
+      "Power comparisons require consistent activity assumptions."
+    ],
+    "sources": [
+      "Lab 7, pp. 7–9 corrected activity table."
+    ],
+    "starter": "",
+    "solutionCode": "set_switching_activity -static_probability 0.01 -toggle_rate 1.5625 -period 10 [get_ports enable]\nset_switching_activity -static_probability 0.50 -toggle_rate 15.625 -period 10 [get_ports up]\nset_switching_activity -static_probability 0.995 -toggle_rate 0.015625 -period 10 [get_ports rst]"
+  },
+  {
+    "id": "L18",
+    "track": "Digital PD",
+    "title": "The fake power win",
+    "level": "Medium",
+    "kind": "Report",
+    "lab": "Lab 7",
+    "minutes": 12,
+    "prompt": "Can you claim that clock gating saved 80% power? Separate the arithmetic from the experiment design and propose a fair rerun.",
+    "artifact": "Synthetic report comparison:\n                   Baseline    Gated\nClock period          1 ns      2 ns\nEnable P(1)           0.50      0.10\nDynamic power        10 mW      2 mW\nLeakage power         1 mW    1.1 mW\nTiming corner          TT        TT",
+    "hint": "Frequency and workload changed at the same time as the implementation.",
+    "solution": [
+      "The listed dynamic power fell by 80%, but that does not isolate clock-gating savings: frequency and enable activity also changed.",
+      "Total reported power fell from 11 to 3.1 mW, a 71.82% reduction, under incomparable operating conditions. Do not present that as a controlled design improvement.",
+      "Rerun with identical frequency, voltage/corner, workload, activity coverage, constraints, and analysis stage; compare area, leakage, dynamic power, timing, and gating statistics.",
+      "If throughput or latency differs, also compare energy per completed operation under a stated workload."
+    ],
+    "rubric": [
+      "Computes the observed dynamic reduction correctly.",
+      "Rejects causal attribution to gating alone.",
+      "Controls frequency and workload in the rerun.",
+      "Includes overhead and performance checks."
+    ],
+    "followups": [
+      "Can lower average power still mean higher energy per transaction?",
+      "Why might clock gating increase leakage?"
+    ],
+    "theory": [
+      "Dynamic power depends on activity, effective capacitance, voltage squared, and frequency.",
+      "The Lab 7 gating comparison explicitly requires the same clock period."
+    ],
+    "sources": [
+      "Lab 7, pp. 15–16 comparison tables."
+    ],
+    "starter": "",
+    "numeric": {
+      "label": "Observed total-power reduction",
+      "answer": 71.8181818,
+      "tolerance": 0.01,
+      "unit": "%",
+      "explanation": "(11 − 3.1) ÷ 11 × 100 = 71.82%; this is not an isolated gating benefit."
+    }
+  },
+  {
+    "id": "L19",
+    "track": "RTL",
+    "title": "Why clk AND enable is unsafe",
+    "level": "Hard",
+    "kind": "Debug",
+    "lab": "Lab 7",
+    "minutes": 15,
+    "prompt": "Explain the hazard and propose a synthesis-friendly replacement. State what you would verify after clock-gating insertion.",
+    "artifact": "assign gclk = clk & enable;\nalways_ff @(posedge gclk)\n  q <= d;\n\nScenario: clk stays HIGH from 5 to 10 ns.\nenable changes LOW → HIGH at 7 ns.",
+    "hint": "What does gclk do at 7 ns?",
+    "solution": [
+      "gclk rises at 7 ns, creating an unintended edge and a shortened pulse. A combinational AND does not guarantee glitch-free clock gating.",
+      "Describe a clock enable in RTL: always_ff @(posedge clk) if (enable) q <= d;. Let the supported synthesis flow infer qualified integrated clock-gating cells.",
+      "For a positive-edge clock, a typical latch-based ICG holds the enable stable during the high phase. Use the library cell and its test control, rather than hand-building a clock gate.",
+      "Check functional equivalence, clock-gating setup/hold checks, gated-register coverage, scan/test behavior, generated clock propagation, and post-CTS timing/power."
+    ],
+    "rubric": [
+      "Identifies the unintended 7 ns rising edge.",
+      "Proposes clock-enable RTL and library ICG insertion.",
+      "Explains why the enable must be stable during the active phase.",
+      "Includes test and clock-gating timing checks."
+    ],
+    "followups": [
+      "How does test enable allow scan shifting through a gated clock domain?",
+      "When can gating overhead outweigh savings?"
+    ],
+    "theory": [
+      "Clock gating targets switching in clocked elements and clock distribution.",
+      "A data mux holds state but does not itself stop clock-pin toggling."
+    ],
+    "sources": [
+      "Lab 7, clock-gating background and insertion flow."
+    ],
+    "starter": "",
+    "solutionCode": "always_ff @(posedge clk) begin\n    if (enable) q <= d;\nend\n\n// In the configured lab DC/Power Compiler flow:\n// compile_ultra -gate_clock\n// report_clock_gating"
+  },
+  {
+    "id": "L20",
+    "track": "Digital PD",
+    "title": "Spend low-Vt cells where they matter",
+    "level": "Medium",
+    "kind": "Report",
+    "lab": "Lab 7",
+    "minutes": 12,
+    "prompt": "Choose a starting point that meets timing and uses the lowest shown leakage. Explain why an LVT percentage limit is not a guarantee of minimum total power.",
+    "artifact": "Synthetic same-corner, same-workload sweep:\nVariant         LVT cell fraction   Slack(ns)  Leakage(mW)\nAll SVT                  0%           -0.10       0.40\nSelective LVT           10%           +0.01       0.65\nBroad LVT               40%           +0.08       1.20\nAll LVT                100%           +0.11       2.30\nDynamic power is not shown.",
+    "hint": "Satisfy timing first, then compare the relevant power metric.",
+    "solution": [
+      "Selective LVT is the lowest shown leakage candidate meeting timing: 0.65 mW with +0.01 ns slack.",
+      "Lower-threshold cells generally improve speed but increase leakage; spend them on critical paths and consider higher-threshold cells on paths with margin. Verify this against the actual library.",
+      "A cell-count fraction is not a leakage fraction: cell sizes, functions, state, and temperature matter. Total power also includes internal and switching contributions.",
+      "Use threshold-voltage group reports plus timing and power reports. Confirm exact set_multi_vth_constraint semantics in the installed command help; a hard bound can constrain feasibility."
+    ],
+    "rubric": [
+      "Chooses the lowest-leakage feasible result.",
+      "Explains threshold-versus-speed/leakage tradeoff.",
+      "Does not equate cell fraction with power fraction.",
+      "Checks all modes/corners and the narrow timing margin."
+    ],
+    "followups": [
+      "Why might replacing an LVT cell trigger resizing elsewhere?",
+      "Can the lowest-leakage candidate have worse total power?"
+    ],
+    "theory": [
+      "A single typical corner is insufficient for signoff.",
+      "report_threshold_voltage_group quantifies the mapped threshold-cell mix in the lab flow."
+    ],
+    "sources": [
+      "Lab 7, pp. 9–12 and 15–16 multi-Vt experiments."
+    ],
+    "starter": "",
+    "numeric": {
+      "label": "Leakage of the best listed timing-feasible candidate",
+      "answer": 0.65,
+      "tolerance": 0.001,
+      "unit": "mW",
+      "explanation": "Selective LVT meets timing and has the lowest listed leakage among feasible variants."
+    }
+  },
+  {
+    "id": "L21",
+    "track": "Digital PD",
+    "title": "Clock gating break-even",
+    "level": "Hard",
+    "kind": "Report",
+    "lab": "Lab 7",
+    "minutes": 15,
+    "prompt": "Estimate the minimum idle fraction at which gating saves dynamic power, using the stated simplified model. List effects excluded from this estimate.",
+    "artifact": "Synthetic energy model per source-clock cycle:\nUngated register bank clock energy:        20 pJ\nICG overhead, every source cycle:            2 pJ\nWhen active, bank still consumes:           20 pJ\nWhen idle, bank clock energy becomes:        0 pJ\nIgnore leakage and enable-transition overhead.\nLet idle fraction = p.",
+    "hint": "Compare 20 with 2 + 20(1−p).",
+    "solution": [
+      "Ungated energy is 20 pJ/cycle. Gated energy is 2 + 20(1−p) = 22−20p pJ/cycle.",
+      "Gating saves energy when 22−20p < 20, so p > 0.10. The break-even idle fraction is 10%; exactly 10% produces no savings.",
+      "The model excludes leakage, enable logic/activity, clock-tree redistribution, capacitance changes, wakeup behavior, and timing/test overhead. Validate with representative activity and implementation reports."
+    ],
+    "rubric": [
+      "Derives both energy expressions.",
+      "Calculates 10% break-even and strict saving above it.",
+      "Distinguishes energy/cycle from average power.",
+      "Names at least three omitted physical effects."
+    ],
+    "followups": [
+      "How does grouping more registers under one gate affect break-even and enable granularity?",
+      "What happens if the enable net itself has high fanout and activity?"
+    ],
+    "theory": [
+      "Clock gating has overhead and is workload-dependent.",
+      "Energy per source cycle multiplied by source frequency gives average power for this model."
+    ],
+    "sources": [
+      "Lab 7 clock-gating concepts; original quantitative extension."
+    ],
+    "starter": "",
+    "numeric": {
+      "label": "Break-even idle fraction",
+      "answer": 10,
+      "tolerance": 0.001,
+      "unit": "%",
+      "explanation": "22 − 20p = 20 gives p = 0.10; savings require more than 10%."
+    }
+  },
+  {
+    "id": "L22",
+    "track": "Digital PD",
+    "title": "Sort timing reports numerically",
+    "level": "Hard",
+    "kind": "Code",
+    "lab": "Lab 7",
+    "minutes": 20,
+    "prompt": "Write Tcl that discovers all matching reg2reg reports, extracts the first slack in each, and prints filenames with slack sorted worst-first. Skip missing slack with a warning; do not hard-code file names or implement your own sort.",
+    "artifact": "Synthetic files under ./reports/:\na.timing.reg2reg.rpt: slack (VIOLATED) -0.12\nb.timing.reg2reg.rpt: slack (MET)       0.03\nc.timing.reg2reg.rpt: slack (VIOLATED) -2.0e-2\nd.timing.reg2reg.rpt: No paths.\nExpected order: a, c, b; warning for d.",
+    "hint": "Use glob -nocomplain, a numeric regex, and lsort -real -index.",
+    "solution": [
+      "Discover reports with glob; preserve filenames as Tcl list elements so spaces are safe. Extract the first slack in each report, matching the exercise contract.",
+      "Use lsort -real -index 0 on pairs of {slack filename}; dictionary/string sorting gives the wrong numeric ordering.",
+      "Warn and skip reports without a usable slack value; an empty/no-path report must not silently become zero. Production flows may instead fail when a required group has no paths.",
+      "This assignment appears at the end of Lab 7 but the handout says it is submitted in Lab 8."
+    ],
+    "rubric": [
+      "Discovers any number of matching reports.",
+      "Parses signed/scientific notation slack.",
+      "Uses built-in numeric sorting.",
+      "Reports missing values explicitly.",
+      "Keeps filenames and numeric slack associated."
+    ],
+    "followups": [
+      "When would taking the first slack be wrong?",
+      "How would you extend this to compare corners without mixing time units?"
+    ],
+    "theory": [
+      "A report can be missing because the design or constraints changed.",
+      "Sort by numeric value, not formatted text."
+    ],
+    "sources": [
+      "Lab 7, p. 17 Tcl exercise (due Lab 8)."
+    ],
+    "starter": "set rows {}\nforeach filename [glob -nocomplain -directory ./reports *.timing.reg2reg.rpt] {\n    # Read and append {slack filename}.\n}\n# Sort and print.\n",
+    "solutionCode": "set rows {}\nforeach filename [glob -nocomplain -directory ./reports *.timing.reg2reg.rpt] {\n    set f [open $filename r]\n    set text [read $f]\n    close $f\n    if {![regexp -nocase {slack\\s+\\([^)]*\\)\\s+([+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?)} $text -> slack]} {\n        puts stderr \"WARNING: no slack in $filename\"\n        continue\n    }\n    lappend rows [list $slack $filename]\n}\nforeach row [lsort -real -index 0 $rows] {\n    lassign $row slack filename\n    puts [format \"% .6g  %s\" $slack $filename]\n}"
+  },
+  {
+    "id": "L23",
+    "track": "Digital PD",
+    "title": "Interrogate a clock-gating report",
+    "level": "Medium",
+    "kind": "Report",
+    "lab": "Lab 7",
+    "minutes": 12,
+    "prompt": "Calculate gated-register coverage. Decide what additional evidence is needed before calling the run successful; explain at least three reasons some registers remain ungated.",
+    "artifact": "Synthetic clock-gating summary:\nTotal registers                   128\nRegisters controlled by ICGs       96\nRegisters not clock gated          32\nInserted ICG cells                  4\n\nSame-frequency power:\nBefore: internal 8 mW, switching 3 mW, leakage 1 mW\nAfter:  internal 5 mW, switching 2 mW, leakage 1.2 mW\nWorst setup slack after: -0.03 ns",
+    "hint": "A power reduction does not erase a timing failure.",
+    "solution": [
+      "Gated-register coverage is 96/128 = 75%. Total reported power falls from 12 to 8.2 mW, but the timing violation makes the implementation infeasible under the current requirement.",
+      "Ungated registers might lack a common enable, be always active, fall below a grouping threshold, be excluded by constraints, or be incompatible with available gating cells/test requirements. Inspect the actual reasons.",
+      "Check equivalence, activity quality, gate-enable timing, scan behavior, all timing groups/corners, and physical implementation effects. Coverage alone is not saved-power percentage."
+    ],
+    "rubric": [
+      "Computes 75% coverage.",
+      "Rejects a timing-failing solution despite lower power.",
+      "Names three plausible ungated-register causes.",
+      "Separates gating coverage from power savings."
+    ],
+    "followups": [
+      "Would you gate a two-register bank? What determines the answer?",
+      "Why might one ICG serving many registers be a physical timing problem?"
+    ],
+    "theory": [
+      "Clock-gating reports describe structural insertion, not workload usefulness.",
+      "Dynamic power is internal plus switching power in this report convention."
+    ],
+    "sources": [
+      "Lab 7, pp. 14–16 clock-gating and power reports."
+    ],
+    "starter": "",
+    "numeric": {
+      "label": "Gated-register coverage",
+      "answer": 75,
+      "tolerance": 0.001,
+      "unit": "%",
+      "explanation": "96 ÷ 128 × 100 = 75%."
+    }
+  },
+  {
+    "id": "L24",
+    "track": "Verification",
+    "title": "Defend your optimization experiment",
+    "level": "Hard",
+    "kind": "Design",
+    "lab": "Lab 7",
+    "minutes": 18,
+    "prompt": "You are asked in an interview: “What did you design, and how do you know your improvement is real?” Build a 90-second answer from these results. Identify the missing evidence before making a final claim.",
+    "artifact": "Synthetic same-frequency, same-corner results:\n                    Baseline    Candidate\nCell area              100         108\nDynamic power          12 mW        8 mW\nLeakage                 1 mW      1.3 mW\nWorst setup slack    +0.05 ns    +0.01 ns\nFunctional tests        20          20\nEquivalence status     n/a        not run\nActivity annotation    96%         62%\nPost-route results     none        none",
+    "hint": "Start with requirements, then the decision and tradeoff; do not turn uncertain measurements into achievements.",
+    "solution": [
+      "State the requirement and proposed mechanism: reduce clock-related dynamic power while preserving behavior and timing, accepting some cell-area overhead.",
+      "Report the observed tradeoff: area +8%, nominal total power 13→9.3 mW, and reduced setup margin. Do not claim a validated 28.46% saving because activity coverage changed substantially.",
+      "Repair/match activity annotation, add targeted tests and equivalence where available, inspect hold/electrical checks, and compare consistent physical stages and corners.",
+      "Describe alternatives considered, such as clock-enable grouping, selective Vt, or datapath changes; justify the chosen method with measurements and acknowledge no post-route signoff yet."
+    ],
+    "rubric": [
+      "States requirements and the optimization mechanism.",
+      "Quantifies costs as well as benefits.",
+      "Identifies activity mismatch and missing equivalence evidence.",
+      "Explains alternative choices and follow-up validation.",
+      "Avoids presenting synthesis estimates as measured silicon."
+    ],
+    "followups": [
+      "Which failure would make you abandon clock gating and try a different approach?",
+      "What would you measure first if post-route power contradicted synthesis?",
+      "How would you explain the tradeoff to someone owning the system power budget?"
+    ],
+    "theory": [
+      "Interview strength comes from decisions, alternatives, evidence, and limits.",
+      "Equal test counts do not imply equal or sufficient functional coverage."
+    ],
+    "sources": [
+      "Lab 7 comparison methodology; original interview extension."
+    ],
+    "starter": ""
+  }
+]

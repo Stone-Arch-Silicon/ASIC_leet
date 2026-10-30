@@ -1,0 +1,1126 @@
+[
+  {
+    "id": "A01",
+    "track": "Digital PD",
+    "title": "Useful skew: who pays for the setup fix?",
+    "level": "Medium",
+    "kind": "Report",
+    "lab": "Beyond Lab 7",
+    "minutes": 12,
+    "prompt": "Calculate setup and hold slack for this single-cycle path. Then delay only the capture clock by 0.08 ns. Does that close both checks? Assume the same clock latencies apply to each check and ignore other variation.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nT = 1.00 ns\nLaunch latency = 0.10 ns; capture latency = 0.14 ns\ntCQ max/min = 0.08 / 0.03 ns\nData max/min = 0.78 / 0.06 ns\nSetup/hold = 0.07 / 0.04 ns\nSetup/hold uncertainty = 0.05 / 0.02 ns",
+    "hint": "For hold, compare the earliest new data with the same-edge capture requirement.",
+    "solution": [
+      "Setup arrival = 0.10 + 0.08 + 0.78 = 0.96 ns. Required = 1 + 0.14 − 0.07 − 0.05 = 1.02 ns; slack = +0.06 ns.",
+      "Hold arrival = 0.10 + 0.03 + 0.06 = 0.19 ns. Required = 0.14 + 0.04 + 0.02 = 0.20 ns; slack = −0.01 ns.",
+      "Delaying capture improves setup slack to +0.14 ns but worsens hold to −0.09 ns. Evaluate incoming and outgoing paths before changing a clock branch."
+    ],
+    "rubric": [
+      "Correctly computes both original slacks",
+      "Gets the direction of the skew tradeoff right",
+      "Mentions adjacent paths and all active corners"
+    ],
+    "followups": [
+      "What changes if the same branch delays launch and capture?",
+      "Why does reducing frequency usually not fix same-edge hold?"
+    ],
+    "theory": [
+      "Setup uses maximum data delay; hold uses minimum delay.",
+      "Useful skew changes timing budgets; it does not remove data-path delay."
+    ],
+    "sources": [
+      {
+        "label": "Synopsys: static timing analysis",
+        "url": "https://www.synopsys.com/glossary/what-is-static-timing-analysis.html"
+      }
+    ],
+    "numeric": {
+      "label": "Original setup slack",
+      "answer": 0.06,
+      "tolerance": 0.001,
+      "unit": "ns",
+      "explanation": "1.02 − 0.96 = 0.06 ns."
+    },
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A02",
+    "track": "Digital PD",
+    "title": "Choose an ECO across corners",
+    "level": "Hard",
+    "kind": "Report",
+    "lab": "Beyond Lab 7",
+    "minutes": 15,
+    "prompt": "Pick an ECO candidate that satisfies both corners, the area budget, and the leakage budget. Explain what must be rerun before signoff.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nLimits: added area ≤ 5%; added leakage ≤ 8%\nCandidate       SS setup WNS    FF hold WNS   Area Δ   Leakage Δ\nBaseline        −0.060 ns       +0.025 ns       0%       0%\nUpsize          +0.020 ns       −0.018 ns      +4%      +6%\nLVT swap        +0.010 ns       +0.005 ns      +0%     +14%\nReroute+buffer  +0.008 ns       +0.007 ns      +3%      +4%",
+    "hint": "A positive setup WNS in one corner is only one acceptance criterion.",
+    "solution": [
+      "Reroute+buffer is the only listed candidate satisfying every supplied limit. Its small margins still need final extraction and variation-aware analysis.",
+      "Check all modes/corners, setup/hold, slew/capacitance, SI, EM/IR, DRC, and equivalence where applicable; compare the same constraints and extraction settings."
+    ],
+    "rubric": [
+      "Selects reroute+buffer for explicit numeric reasons",
+      "Rejects both other candidates for their failing limits",
+      "Names relevant post-ECO checks"
+    ],
+    "followups": [
+      "Would you accept +0.008 ns without knowing uncertainty and model accuracy?",
+      "When can a buffer help setup and still threaten a different hold path?"
+    ],
+    "theory": [
+      "MCMM means every required mode/corner must pass.",
+      "ECO acceptance should track constraints and physical side effects."
+    ],
+    "sources": [
+      {
+        "label": "Synopsys: block-level implementation topics",
+        "url": "https://training.synopsys.com/learn/courses/997/ic-compiler-ii-block-level-implementation"
+      }
+    ],
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A03",
+    "track": "Digital PD",
+    "title": "A small core that refuses to route",
+    "level": "Medium",
+    "kind": "Report",
+    "lab": "Beyond Lab 7",
+    "minutes": 12,
+    "prompt": "Choose the most defensible next experiment. Explain why global utilization alone did not predict this result.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nRun   Utilization   Local channel overflow   Setup WNS   Wirelength\nA       72%                 18%              −0.16 ns      10.2 mm\nB       65%                 16%              −0.14 ns      10.4 mm\nC       69%                  2%              −0.03 ns      10.0 mm\nB: enlarged core only. C: rotated SRAM pins toward consumers, widened blocked channel.",
+    "hint": "Ask where demand exceeds available tracks, rather than only how many cells fit.",
+    "solution": [
+      "Continue from C and inspect detailed routing/pin access; it has the lowest overflow and best timing among these runs.",
+      "The narrow macro channel is a local bottleneck. Enlarging unrelated whitespace barely changes its capacity.",
+      "Sweep channel width and macro placement with fixed constraints. Compare detailed-route DRC, extracted timing, area, and wirelength."
+    ],
+    "rubric": [
+      "Distinguishes local congestion from global utilization",
+      "Uses the evidence to select C",
+      "Proposes controlled experiments and post-route validation"
+    ],
+    "followups": [
+      "Could a placement halo make congestion worse?",
+      "What if the macro pins are on a blocked metal layer?"
+    ],
+    "theory": [
+      "Macros, pin access, routing blockages, and power straps affect usable routing capacity.",
+      "Placement and routing blockages constrain different resources."
+    ],
+    "sources": [
+      {
+        "label": "Cadence: placement blockages and halos",
+        "url": "https://support1.cadence.com/public/docs/content/20503556.html"
+      },
+      {
+        "label": "Cadence Innovus datasheet",
+        "url": "https://www.cadence.com/en_US/home/resources/datasheets/innovus-implementation-system-ds.html"
+      }
+    ],
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A04",
+    "track": "Digital PD",
+    "title": "Floorplan area: count the unusable space",
+    "level": "Easy",
+    "kind": "Report",
+    "lab": "Beyond Lab 7",
+    "minutes": 8,
+    "prompt": "Estimate total core area. Standard-cell utilization is defined here over placeable core area after subtracting macro and blockage areas; they do not overlap. Ignore other overhead for this estimate.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nStandard-cell area = 42,000 µm²\nTarget standard-cell utilization = 60%\nHard-macro area = 18,000 µm²\nNon-overlapping blockage area = 5,000 µm²",
+    "hint": "Compute the required standard-cell placement region first.",
+    "solution": [
+      "Required placeable standard-cell region = 42,000 / 0.60 = 70,000 µm².",
+      "Total estimated core = 70,000 + 18,000 + 5,000 = 93,000 µm². Actual planning must account for the tool’s utilization definition, tap/filler/CTS growth, power grid, and routability."
+    ],
+    "rubric": [
+      "Uses the stated utilization denominator",
+      "Obtains 93,000 µm²",
+      "Distinguishes an area estimate from a routable floorplan"
+    ],
+    "followups": [
+      "How would overlapping keepouts change the arithmetic?",
+      "What changes if the tool includes macro area in its utilization metric?"
+    ],
+    "theory": [
+      "Always establish the utilization numerator and denominator.",
+      "A legal placement is not proof of routability."
+    ],
+    "sources": [
+      {
+        "label": "Synopsys: block-level implementation topics",
+        "url": "https://training.synopsys.com/learn/courses/997/ic-compiler-ii-block-level-implementation"
+      }
+    ],
+    "numeric": {
+      "label": "Estimated core area",
+      "answer": 93000,
+      "tolerance": 0.1,
+      "unit": "µm²",
+      "explanation": "42,000/0.60 + 18,000 + 5,000 = 93,000 µm²."
+    },
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A05",
+    "track": "Digital PD",
+    "title": "CTS signoff: low skew, bad clock",
+    "level": "Medium",
+    "kind": "Debug",
+    "lab": "Beyond Lab 7",
+    "minutes": 12,
+    "prompt": "A teammate says the clock tree is good because skew is 15 ps. Identify two independently blocking issues and a repair plan.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nClock endpoints = 4,096\nGlobal skew = 15 ps\nMaximum insertion delay = 0.75 ns\nWorst clock transition = 130 ps (limit 80 ps)\nPost-CTS FF hold WNS = −45 ps\nClock dynamic power = 38% of block total",
+    "hint": "Clock quality includes electrical limits and data timing, not only skew.",
+    "solution": [
+      "The clock transition exceeds its limit and hold has negative slack. Low skew does not excuse either violation.",
+      "Inspect slow clock branches for RC/fanout and select legal buffer/topology/routing changes; inspect individual hold paths and add controlled data delay where appropriate.",
+      "Rerun propagated-clock timing across corners and recheck setup, clock power, insertion delay, transition, and physical rules. The supplied insertion delay/power need budgets before being called violations."
+    ],
+    "rubric": [
+      "Names transition and hold as explicit failures",
+      "Does not invent an insertion-delay or power limit",
+      "Proposes changes with setup/power tradeoffs"
+    ],
+    "followups": [
+      "Can reducing skew make hold worse on a specific path?",
+      "Why should the clock tree use characterized clock cells?"
+    ],
+    "theory": [
+      "Insertion delay is clock source-to-sink latency.",
+      "Skew summarizes relative endpoint arrival, not every clock-quality metric."
+    ],
+    "sources": [
+      {
+        "label": "Synopsys IC Compiler II",
+        "url": "https://www.synopsys.com/implementation-and-signoff/physical-implementation/ic-compiler.html"
+      }
+    ],
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A06",
+    "track": "Digital PD",
+    "title": "Crosstalk turns a pass into a failure",
+    "level": "Medium",
+    "kind": "Report",
+    "lab": "Beyond Lab 7",
+    "minutes": 10,
+    "prompt": "Quantify the SI penalty and choose two physical experiments. The reported required time is unchanged between runs.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nExtracted timing without SI: slack +0.035 ns\nExtracted timing with SI:    slack −0.025 ns\nVictim: long parallel run beside a switching bus\nVictim cell delay = 0.18 ns; net delay without SI = 0.44 ns",
+    "hint": "Look at what changed between the two otherwise matched analyses.",
+    "solution": [
+      "SI adds a net timing penalty of 0.060 ns in this fixture.",
+      "Try reducing parallel overlap/increasing separation or changing the route layer; evaluate buffering if load/slew warrants it. Shielding is another candidate but consumes tracks and can add ground capacitance.",
+      "Re-extract and rerun SI timing with realistic aggressor windows. Check hold as well as setup; coupling can speed up or slow down a transition."
+    ],
+    "rubric": [
+      "Computes 60 ps penalty",
+      "Proposes physical coupling-reduction experiments",
+      "Rechecks timing and routing side effects"
+    ],
+    "followups": [
+      "Why does aggressor switching direction matter?",
+      "Why might blindly upsizing the victim not solve the problem?"
+    ],
+    "theory": [
+      "Coupling is a physical interconnect effect.",
+      "SI timing depends on waveform and switching-window assumptions."
+    ],
+    "sources": [
+      {
+        "label": "Synopsys PrimeTime",
+        "url": "https://www.synopsys.com/implementation-and-signoff/signoff/primetime.html"
+      }
+    ],
+    "numeric": {
+      "label": "SI timing penalty",
+      "answer": 60,
+      "tolerance": 0.001,
+      "unit": "ps",
+      "explanation": "35 ps − (−25 ps) = 60 ps."
+    },
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A07",
+    "track": "Digital PD",
+    "title": "IR drop: average power hides the burst",
+    "level": "Hard",
+    "kind": "Report",
+    "lab": "Beyond Lab 7",
+    "minutes": 15,
+    "prompt": "Explain why the design can pass static IR checks yet fail a workload. Propose one grid-side and one activity-side experiment.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nVDD = 0.80 V; minimum permitted local supply = 0.74 V\nStatic analysis minimum = 0.765 V\nBurst workload minimum = 0.712 V for 0.9 ns\nHotspot aligns with 256 registers enabling together\nAverage block power changes by only 2% between workloads",
+    "hint": "Peak current and its spatial/temporal distribution differ from average power.",
+    "solution": [
+      "Static result meets the supplied limit; the burst misses it by 28 mV. The supply network response to correlated switching is the issue to investigate.",
+      "Grid-side: inspect vias/straps and package supply path; test reinforcement or local decoupling. Activity-side: test staggered enable schedules only if functionality and latency permit.",
+      "Use realistic burst vectors and extracted/package models. Recheck timing with voltage sensitivity, EM, area/leakage, and the worst local waveform."
+    ],
+    "rubric": [
+      "Identifies 28 mV dynamic failure",
+      "Separates average power from instantaneous current",
+      "Gives two distinct repair classes and validation"
+    ],
+    "followups": [
+      "Can decap solve a sustained DC voltage drop?",
+      "How would your conclusion change if the package model was missing?"
+    ],
+    "theory": [
+      "IR drop and transient supply droop require appropriate stimulus/model assumptions.",
+      "Reliability limits are foundry- and scenario-specific."
+    ],
+    "sources": [
+      {
+        "label": "Cadence Voltus training topics",
+        "url": "https://community.cadence.com/cadence_blogs_8/b/di/posts/accelerate-design-signoff-with-the-updated-cadence-voltus-training-kit"
+      }
+    ],
+    "numeric": {
+      "label": "Dynamic supply shortfall",
+      "answer": 28,
+      "tolerance": 0.001,
+      "unit": "mV",
+      "explanation": "0.740 V − 0.712 V = 0.028 V."
+    },
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A08",
+    "track": "Digital PD",
+    "title": "Is this path really multicycle?",
+    "level": "Hard",
+    "kind": "Design",
+    "lab": "Beyond Lab 7",
+    "minutes": 15,
+    "prompt": "An engineer wants to remove setup violations using a multicycle exception. State what evidence you require and how to validate both setup and hold semantics before applying it.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nclk = 500 MHz\nvalid request accepted on edge n\nA claimed result becomes visible on edge n+3\nImplementation has enable-controlled destination registers\nNo protocol assertion or trace is supplied",
+    "hint": "Latency alone does not prove every intermediate capture is irrelevant.",
+    "solution": [
+      "Require an architectural contract showing when data launches, when destination capture is enabled, and how data remains valid until the required edge.",
+      "Prove the intended edge relationship with simulation/assertions or formal analysis, including back-to-back transactions, reset, and enable behavior.",
+      "Scope the exception only to proven paths. Inspect actual launch/capture edges in max and min timing reports; derive any hold companion from clock relationships and tool semantics rather than pasting a universal command."
+    ],
+    "rubric": [
+      "Requires functional proof rather than timing convenience",
+      "Addresses hold-edge semantics",
+      "Scopes and audits exceptions"
+    ],
+    "followups": [
+      "How could a three-cycle pipeline still require single-cycle timing?",
+      "What changes for unequal or phase-shifted clocks?"
+    ],
+    "theory": [
+      "Timing exceptions are claims about legal circuit operation.",
+      "False-path and multicycle exceptions express different contracts."
+    ],
+    "sources": [
+      {
+        "label": "Synopsys: static timing analysis",
+        "url": "https://www.synopsys.com/glossary/what-is-static-timing-analysis.html"
+      }
+    ],
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A09",
+    "track": "Digital PD",
+    "title": "Wire-dominated path: choose a method",
+    "level": "Medium",
+    "kind": "Design",
+    "lab": "Beyond Lab 7",
+    "minutes": 12,
+    "prompt": "Rank two next experiments for this path and justify why retiming may be a larger architectural change.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nCritical path: producer → mux → consumer\nCell delay = 0.22 ns; interconnect delay = 0.68 ns\nFanout = 48\nProducer and consumer separated by SRAM bank\nCurrent interface promises one-cycle latency",
+    "hint": "Classify the delay before choosing a repair.",
+    "solution": [
+      "First inspect placement and routing: move/cluster logic or replan macro channel if feasible. Also evaluate fanout partitioning, buffering, or logic duplication under area/power limits.",
+      "Retiming redistributes existing registers while preserving behavior under the chosen equivalence assumptions. Adding pipeline stages can change interface latency. In either case check control alignment, reset semantics, and the promised one-cycle interface.",
+      "Compare post-route timing and congestion; a synthesis-only win may vanish after extraction."
+    ],
+    "rubric": [
+      "Recognizes interconnect dominance",
+      "Presents two plausible methods with tradeoffs",
+      "Preserves interface contract or explicitly revises it"
+    ],
+    "followups": [
+      "When does cloning a driver increase power without fixing timing?",
+      "What evidence would convince you to change the architecture?"
+    ],
+    "theory": [
+      "Physical optimization and microarchitecture changes operate at different scopes.",
+      "Retiming is constrained by sequential semantics and legal register movement."
+    ],
+    "sources": [
+      {
+        "label": "Cadence Innovus datasheet",
+        "url": "https://www.cadence.com/en_US/home/resources/datasheets/innovus-implementation-system-ds.html"
+      }
+    ],
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A10",
+    "track": "Digital PD",
+    "title": "Signoff handoff: find the stale input",
+    "level": "Hard",
+    "kind": "Debug",
+    "lab": "Beyond Lab 7",
+    "minutes": 12,
+    "prompt": "Identify why this handoff cannot be trusted, and define a reproducible evidence bundle for the next run.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nNetlist: chip_eco12.v, commit 12\nSPEF: chip_eco10.spef, commit 10\nSDC: functional mode only\nLibrary: TT only\nClaim: \"All signoff timing passed; ready for tapeout\"",
+    "hint": "A report is meaningful only for its actual inputs and analysis scope.",
+    "solution": [
+      "Parasitics are stale relative to the ECO netlist. Mode and corner coverage are also incomplete for any claim requiring more than functional TT.",
+      "Export mutually consistent netlist/layout/parasitics; record hashes, tool versions, constraints, libraries, modes/corners, and extraction settings.",
+      "Audit unconstrained endpoints, exceptions, setup/hold, electrical limits, SI and physical verification. Define the actual signoff checklist with the project/foundry requirements."
+    ],
+    "rubric": [
+      "Catches stale SPEF",
+      "Rejects unsupported coverage claim",
+      "Defines versioned inputs and a concrete rerun scope"
+    ],
+    "followups": [
+      "How can an ECO change naming without changing logic?",
+      "Why is a clean report insufficient if endpoints are unconstrained?"
+    ],
+    "theory": [
+      "Signoff is a scoped claim about consistent design inputs.",
+      "Implementation and signoff tools exchange constraints, connectivity, and parasitics."
+    ],
+    "sources": [
+      {
+        "label": "Cadence Quantus Extraction Solution",
+        "url": "https://www.cadence.com/en_US/home/tools/digital-design-and-signoff/silicon-signoff/quantus-extraction-solution.html"
+      },
+      {
+        "label": "Synopsys PrimeTime",
+        "url": "https://www.synopsys.com/implementation-and-signoff/signoff/primetime.html"
+      }
+    ],
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A11",
+    "track": "Analog PD",
+    "title": "Match a pair against a linear gradient",
+    "level": "Medium",
+    "kind": "Design",
+    "lab": "Beyond Lab 7",
+    "minutes": 12,
+    "prompt": "Two equal devices are split into two identical unit fingers each. Compare the x-centroids of AABB and ABBA. Which cancels an ideal first-order x-gradient? State two effects that this arithmetic does not cover.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nUnit x positions: 0, 1, 2, 3\nCandidate 1: A A B B\nCandidate 2: A B B A\nEqual unit area; identical orientation; first-order gradient only",
+    "hint": "Average the occupied x positions for each device.",
+    "solution": [
+      "AABB: A centroid 0.5, B centroid 2.5. ABBA: both centroids 1.5, so ideal linear x-gradient contribution averages equally.",
+      "This does not cancel random local mismatch, nonlinear gradients, unequal routing, or unequal device surroundings.",
+      "Check matching orientation, dummy surroundings, contacts, well/stress proximity, and extracted parasitics before choosing a real layout."
+    ],
+    "rubric": [
+      "Computes the centroids correctly",
+      "States the first-order-gradient assumption",
+      "Names limitations and physical follow-up checks"
+    ],
+    "followups": [
+      "Would ABBA alone guarantee matching under a y-gradient?",
+      "When can a compact interdigitated layout beat a larger common-centroid layout?"
+    ],
+    "theory": [
+      "Common centroid is a geometric constraint, not a universal performance guarantee.",
+      "Compare matched surroundings as well as centroid coordinates."
+    ],
+    "sources": [
+      {
+        "label": "Research: common-centroid advantages and limitations",
+        "url": "https://ieeexplore.ieee.org/abstract/document/9474244/"
+      }
+    ],
+    "numeric": {
+      "label": "ABBA A-device x-centroid",
+      "answer": 1.5,
+      "tolerance": 0.001,
+      "unit": "position units",
+      "explanation": "(0 + 3)/2 = 1.5."
+    },
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A12",
+    "track": "Analog PD",
+    "title": "A 1:2 mirror needs equal unit devices",
+    "level": "Medium",
+    "kind": "Design",
+    "lab": "Beyond Lab 7",
+    "minutes": 12,
+    "prompt": "Construct a symmetric one-dimensional unit placement for a 1:2 mirror with two A units and four B units. Explain the role of dummies and routing.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nRequired area ratio A:B = 1:2\nSix active unit positions: 0,1,2,3,4,5\nAll active units have equal W/L\nNo gradient or stress model is supplied beyond linear x-gradient",
+    "hint": "Choose two A positions with average 2.5; all remaining B positions will have the same average.",
+    "solution": [
+      "One valid arrangement is B A B B A B: A positions 1 and 4 average 2.5; B positions 0,2,3,5 also average 2.5.",
+      "Place symmetric edge dummies where the PDK/matching strategy requires them; connect dummy terminals safely according to the PDK.",
+      "Balance source/drain/gate routing and surroundings; preserve the 1:2 active-unit ratio. Verify the ratio with extracted simulation rather than assuming exact current scaling."
+    ],
+    "rubric": [
+      "Builds a valid 2:4 assignment with common x-centroid",
+      "Keeps dummies out of the active ratio",
+      "Addresses routing, bias, and surroundings"
+    ],
+    "followups": [
+      "Why can equal W/L ratios still produce unequal current ratios?",
+      "What changes if the mirror devices see different VDS?"
+    ],
+    "theory": [
+      "Unit decomposition supports ratio and geometric matching.",
+      "Current ratio also depends on bias and nonideal device behavior."
+    ],
+    "sources": [
+      {
+        "label": "Research: common-centroid advantages and limitations",
+        "url": "https://ieeexplore.ieee.org/abstract/document/9474244/"
+      },
+      {
+        "label": "Cadence Virtuoso Layout Suite",
+        "url": "https://www.cadence.com/en_US/home/resources/datasheets/virtuoso-layout-suite-ds.html"
+      }
+    ],
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A13",
+    "track": "Analog PD",
+    "title": "Equal-length routes are not equal parasitics",
+    "level": "Medium",
+    "kind": "Report",
+    "lab": "Beyond Lab 7",
+    "minutes": 12,
+    "prompt": "Explain the imbalance and propose a measurable layout repair. Route length is identical on both differential inputs.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nPath P: 120 µm, 2 vias, extracted R=45 Ω, C=18 fF\nPath N: 120 µm, 8 vias, extracted R=79 Ω, C=31 fF\nN overlaps a switching digital bus; P does not",
+    "hint": "Length alone ignores layers, vias, width, and neighborhood.",
+    "solution": [
+      "N has a different via stack and coupling environment; equal geometry length does not ensure equal impedance or coupling.",
+      "Match layers, width, via count, surroundings, and coupling exposure as feasible; separate noisy routes or use an appropriate quiet shield after evaluating added load.",
+      "Re-extract RC/coupling and simulate offset, bandwidth, CMRR and relevant transient behavior. Avoid adding parasitics merely to force equal numbers without checking performance."
+    ],
+    "rubric": [
+      "Identifies at least two asymmetry causes",
+      "Proposes a physical fix tied to extracted evidence",
+      "Checks circuit-level performance after repair"
+    ],
+    "followups": [
+      "Can perfectly equal parasitics still be too large?",
+      "Where should the shield connect, and why does its impedance matter?"
+    ],
+    "theory": [
+      "Matching concerns electrical behavior, not just distance.",
+      "Parasitic extraction links layout changes to simulation."
+    ],
+    "sources": [
+      {
+        "label": "Research: matching and capacitor parasitics",
+        "url": "https://researchoutput.ncku.edu.tw/en/publications/common-centroid-capacitor-layout-generation-considering-device-ma/"
+      },
+      {
+        "label": "Cadence Quantus Extraction Solution",
+        "url": "https://www.cadence.com/en_US/home/tools/digital-design-and-signoff/silicon-signoff/quantus-extraction-solution.html"
+      }
+    ],
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A14",
+    "track": "Analog PD",
+    "title": "LVS passes; the amplifier still oscillates",
+    "level": "Medium",
+    "kind": "Debug",
+    "lab": "Beyond Lab 7",
+    "minutes": 15,
+    "prompt": "Prioritize debugging steps. The schematic testbench is unchanged, and LVS is clean.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nPre-layout: DC gain 62 dB, UGF 90 MHz, phase margin 64°\nPost-layout: DC gain 61 dB, UGF 66 MHz, phase margin 29°\nNew extracted pole candidate: high-impedance internal node\nDRC=0; LVS=matched",
+    "hint": "Connectivity equivalence does not promise the same frequency response.",
+    "solution": [
+      "Confirm extracted-view binding, supply/testbench conditions, load, bias and stability-analysis setup first.",
+      "Inspect parasitic capacitance/resistance around the high-impedance node and compensation network; selectively compare parasitic contributions to isolate the dominant change.",
+      "Try a shorter/less coupled route or revised compensation, then rerun post-layout stability and transient settling across required PVT/load cases. DRC/LVS remain necessary after edits."
+    ],
+    "rubric": [
+      "Separates LVS from analog performance",
+      "Checks analysis setup before changing layout",
+      "Links a physical/circuit repair to repeated stability checks"
+    ],
+    "followups": [
+      "Why can phase margin fall even though unity-gain frequency falls?",
+      "How would you test large-signal settling beyond small-signal stability?"
+    ],
+    "theory": [
+      "LVS checks a form of schematic/layout correspondence.",
+      "Post-layout simulation evaluates parasitic effects on performance."
+    ],
+    "sources": [
+      {
+        "label": "Cadence: physical verification and extraction",
+        "url": "https://community.cadence.com/cadence_blogs_8/b/cic/posts/custom-ic-design-flow-methodology-circuit-physical-verification-and-parasitic-extraction"
+      }
+    ],
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A15",
+    "track": "Analog PD",
+    "title": "DRC clean, LVS short: debug the right layer",
+    "level": "Easy",
+    "kind": "Debug",
+    "lab": "Beyond Lab 7",
+    "minutes": 10,
+    "prompt": "Choose a debugging sequence for this result. Do not delete shapes until you understand the mismatch.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nDRC: 0 errors\nLVS: net VBIAS merged with VSS\nCross-probe: overlap near a well tap and a metal1 strap\nSchematic device count matches extracted count",
+    "hint": "A legal piece of metal can connect the wrong nets.",
+    "solution": [
+      "Cross-probe the merged nets and trace the actual conducting path, including contacts/vias and labels. Inspect the suspected overlap and terminal connectivity.",
+      "Correct the unintended connection while preserving the intended well/tap bias; rerun LVS and DRC, then extraction if relevant.",
+      "DRC enforces geometry rules; it does not establish intended functional connectivity. Matching device counts alone does not establish matching nets."
+    ],
+    "rubric": [
+      "Explains why DRC can pass with a short",
+      "Uses connectivity tracing and cross-probe",
+      "Rechecks both LVS and DRC after repair"
+    ],
+    "followups": [
+      "Could an incorrect pin label create an apparent mismatch?",
+      "Why is removing a well tap an unsafe shortcut?"
+    ],
+    "theory": [
+      "DRC and LVS answer different questions.",
+      "Well and substrate connections affect both connectivity and device behavior."
+    ],
+    "sources": [
+      {
+        "label": "Cadence: physical verification and extraction",
+        "url": "https://community.cadence.com/cadence_blogs_8/b/cic/posts/custom-ic-design-flow-methodology-circuit-physical-verification-and-parasitic-extraction"
+      },
+      {
+        "label": "Cadence Virtuoso Layout Suite",
+        "url": "https://www.cadence.com/en_US/home/resources/datasheets/virtuoso-layout-suite-ds.html"
+      }
+    ],
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A16",
+    "track": "Analog PD",
+    "title": "Corner pass is not a mismatch result",
+    "level": "Medium",
+    "kind": "Report",
+    "lab": "Beyond Lab 7",
+    "minutes": 12,
+    "prompt": "Interpret these results. Which experiment would you run to estimate local-mismatch sensitivity, and why is the yield claim unjustified?",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nDeterministic TT/SS/FF corners: all pass\nProcess-only Monte Carlo: 200/200 pass\nMismatch-only Monte Carlo: 184/200 pass\nClaim: \"Corners passed, so expected yield is 100%\"",
+    "hint": "Global process changes and local device variation are different model components.",
+    "solution": [
+      "Mismatch-only failures reveal sensitivity to local variation under this model/test setup. Examine failed specs and device contribution/sensitivity before changing device sizes or placement.",
+      "200/200 process-only passes cannot establish 100% production yield. Required process-plus-mismatch, PVT/load coverage and statistical confidence depend on the PDK methodology and yield target.",
+      "Use the PDK-prescribed statistical sections and correlations; verify whether the model requires All or another configured analysis rather than assuming GUI names are universal."
+    ],
+    "rubric": [
+      "Distinguishes global process and local mismatch",
+      "Rejects 100% yield inference from finite samples",
+      "Uses PDK statistical guidance and failure analysis"
+    ],
+    "followups": [
+      "Why might a centroid improve systematic mismatch but not the modeled random spread?",
+      "How many zero-failure trials would support your target failure rate with stated confidence?"
+    ],
+    "theory": [
+      "Statistical analysis is model-dependent and sample-limited.",
+      "Passing deterministic corners does not replace mismatch analysis."
+    ],
+    "sources": [
+      {
+        "label": "Cadence: Monte Carlo process and mismatch explanation",
+        "url": "https://community.cadence.com/cadence_technology_forums/f/custom-ic-design/20466/monte-carlo-simulation-global-local-vs-local-and-process-vs-mismatch"
+      },
+      {
+        "label": "Cadence Virtuoso Variation Option",
+        "url": "https://www.cadence.com/en_US/home/resources/datasheets/virtuoso-variation-option-ds.html"
+      }
+    ],
+    "numeric": {
+      "label": "Observed mismatch-only pass fraction",
+      "answer": 92,
+      "tolerance": 0.01,
+      "unit": "%",
+      "explanation": "184/200 × 100 = 92%; this is an observed fraction, not guaranteed yield."
+    },
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A17",
+    "track": "Analog PD",
+    "title": "Guard rings: isolation with consequences",
+    "level": "Medium",
+    "kind": "Design",
+    "lab": "Beyond Lab 7",
+    "minutes": 12,
+    "prompt": "A sensitive input pair sits beside a rapidly switching digital block. Propose an isolation plan and explain how you will avoid introducing asymmetry.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nInput pair A/B distances to proposed guard ring: 1 µm / 8 µm\nNearby digital buffer bank toggles every cycle\nSubstrate/well options and rules are PDK-specific",
+    "hint": "The guard ring changes the devices’ local environment as well as collecting current.",
+    "solution": [
+      "Use foundry-supported well/tap/guard structures with low-impedance intended bias connections; consider separation and supported deep-well isolation where justified.",
+      "Keep paired devices comparably situated relative to wells, taps and guard rings. Revise the asymmetric proposal instead of assuming the ring is electrically invisible.",
+      "Evaluate extracted substrate/coupling noise when supported, layout-dependent effects, matching and latch-up/DRC rules. Quantify benefit and area/parasitic cost."
+    ],
+    "rubric": [
+      "Specifies correct bias and PDK-supported structures",
+      "Catches asymmetric local environment",
+      "Includes noise and matching verification"
+    ],
+    "followups": [
+      "Can a poorly connected guard ring inject noise?",
+      "Why is a deep N-well not an automatic replacement for proper taps?"
+    ],
+    "theory": [
+      "Guard structures can reduce coupling while consuming area.",
+      "Their proximity can affect device matching."
+    ],
+    "sources": [
+      {
+        "label": "Cadence: wells, taps, and guard rings",
+        "url": "https://community.cadence.com/cadence_blogs_8/b/cic/posts/analog-layout-wells-taps-and-guard-rings"
+      }
+    ],
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A18",
+    "track": "Analog PD",
+    "title": "A metal wire passes DRC but fails EM",
+    "level": "Medium",
+    "kind": "Report",
+    "lab": "Beyond Lab 7",
+    "minutes": 10,
+    "prompt": "Use the supplied project-specific limits to identify every failure. Give physical repair options without treating these fictional limits as foundry rules.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nWire average current density = 1.3 mA/µm; limit = 1.0 mA/µm\nVia average current = 0.7 mA; limit = 0.5 mA\nLocal DC drop = 24 mV; budget = 20 mV\nGeometry passes minimum width/spacing DRC",
+    "hint": "Geometric legality and current-carrying reliability are separate checks.",
+    "solution": [
+      "The wire exceeds its average-current-density limit, the via exceeds its current limit, and the DC drop exceeds budget by 4 mV.",
+      "Widen/shorten the current path, use appropriate upper metals, and add legal via arrays or parallel paths; verify actual current sharing and current crowding.",
+      "Rerun extracted EM/IR with correct current metrics, temperature, lifetime and waveform assumptions. Check area, routing, matching, and DRC side effects."
+    ],
+    "rubric": [
+      "Names all three failures",
+      "Offers wire and via repairs",
+      "Keeps limits tied to the supplied scenario"
+    ],
+    "followups": [
+      "Why does doubling via count not always halve peak current per via?",
+      "How do peak, RMS and average limits differ?"
+    ],
+    "theory": [
+      "EM relates current stress to reliability; IR affects voltage delivery.",
+      "Applicable current metrics and limits come from the process/reliability methodology."
+    ],
+    "sources": [
+      {
+        "label": "Cadence Voltus-XFi custom power integrity",
+        "url": "https://www.cadence.com/en_US/home/tools/custom-ic-analog-rf-design/power-integrity/voltus-xfi-custom-power-integrity-solution.html"
+      }
+    ],
+    "numeric": {
+      "label": "DC drop budget excess",
+      "answer": 4,
+      "tolerance": 0.001,
+      "unit": "mV",
+      "explanation": "24 − 20 = 4 mV."
+    },
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A19",
+    "track": "Analog PD",
+    "title": "Capacitor array: ratio versus routing",
+    "level": "Hard",
+    "kind": "Design",
+    "lab": "Beyond Lab 7",
+    "minutes": 15,
+    "prompt": "Choose the first layout experiment for this 4:4 capacitor pair. Explain how you will distinguish intrinsic mismatch from interconnect imbalance.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nUnit-cap area and count match\nCommon centroid satisfied\nExtracted top-plate parasitic: A=22 fF, B=37 fF\nBottom-plate routing differs in metal layer and via count\nObserved ratio error grows with switching frequency",
+    "hint": "The frequency dependence and extracted asymmetry point beyond nominal unit-cap geometry.",
+    "solution": [
+      "Start with balanced top-/bottom-plate routing, layers, vias and surroundings; compare the extracted capacitance matrix and series resistance, not only unit count.",
+      "Run matched pre-layout, extracted and parasitic-isolated experiments; separately examine mismatch Monte Carlo using the approved device models.",
+      "A more elaborate centroid can add route parasitics. Select the topology using actual ratio/settling/noise targets and extracted results."
+    ],
+    "rubric": [
+      "Uses the extracted imbalance to prioritize routing",
+      "Separates random mismatch from deterministic parasitics",
+      "Evaluates dynamic circuit behavior and tradeoffs"
+    ],
+    "followups": [
+      "Why can bottom-plate switching change sensitivity to parasitics?",
+      "What would a shield improve and what could it worsen?"
+    ],
+    "theory": [
+      "Capacitor matching and parasitic minimization are coupled layout objectives.",
+      "The complete parasitic network matters in switched circuits."
+    ],
+    "sources": [
+      {
+        "label": "Research: matching and capacitor parasitics",
+        "url": "https://researchoutput.ncku.edu.tw/en/publications/common-centroid-capacitor-layout-generation-considering-device-ma/"
+      }
+    ],
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A20",
+    "track": "Analog PD",
+    "title": "PVT signoff: define the missing experiment",
+    "level": "Hard",
+    "kind": "Design",
+    "lab": "Beyond Lab 7",
+    "minutes": 15,
+    "prompt": "Draft a compact signoff matrix for an analog buffer using the provided requirements. Identify gaps in the current evidence; do not promise untested performance.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nSpecs: gain error ≤1%, settling to 0.1% ≤20 ns, output load 1–8 pF\nSupply range 0.9–1.1 V; temperature −20 to 100°C\nCurrent evidence: TT, 1.0 V, 25°C, 1 pF, schematic only\nFoundry process corners and statistical models available in licensed PDK",
+    "hint": "Include process, environment, load, extraction, and relevant statistical variation.",
+    "solution": [
+      "Build a matrix using required PDK corners, supply endpoints/intermediate critical cases, temperature limits and load range; track gain error and settling separately.",
+      "Repeat required cases with extracted layout and realistic excitation; verify stability, slew, headroom and power where the specifications require them.",
+      "Add appropriate statistical variation runs and define pass criteria/sample confidence. Identify worst cases from data; do not assume SS/hot is worst for every analog metric."
+    ],
+    "rubric": [
+      "Covers all stated operating ranges",
+      "Adds post-layout and appropriate statistical checks",
+      "Defines measurable pass criteria and avoids corner stereotypes"
+    ],
+    "followups": [
+      "Can minimum load be the worst stability case?",
+      "How would you reduce simulation cost without hiding an untested corner?"
+    ],
+    "theory": [
+      "Analog worst cases depend on the metric and circuit operating region.",
+      "Signoff evidence must match the stated operating envelope."
+    ],
+    "sources": [
+      {
+        "label": "Cadence Virtuoso Variation Option",
+        "url": "https://www.cadence.com/en_US/home/resources/datasheets/virtuoso-variation-option-ds.html"
+      }
+    ],
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A21",
+    "track": "RTL",
+    "title": "A pulse disappears at the clock crossing",
+    "level": "Medium",
+    "kind": "Design",
+    "lab": "Beyond Lab 7",
+    "minutes": 15,
+    "prompt": "The source emits one 2 ns pulse; the asynchronous destination has a 10 ns period. Explain the failure and propose a CDC contract that guarantees delivery under stated assumptions.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nFast clock: 500 MHz; slow clock: 100 MHz\nPulse → two destination-clocked flops → edge detector\nSimulation sometimes sees no destination event\nSource may emit consecutive events",
+    "hint": "A two-flop synchronizer improves metastability containment for a sampled level; it cannot sample a pulse that never overlaps a destination edge.",
+    "solution": [
+      "A narrow source pulse may occur entirely between destination samples.",
+      "Use a request/acknowledge handshake and hold the request until acknowledged; define source backpressure and reset behavior. For sustained throughput, queue events in an asynchronous FIFO.",
+      "A toggle scheme needs a minimum event-spacing contract so two toggles cannot collapse before observation. Verify CDC structure, reset release, protocol and physical constraints."
+    ],
+    "rubric": [
+      "Identifies pulse-width sampling loss",
+      "Defines a delivery protocol and throughput assumptions",
+      "Handles reset and back-to-back events"
+    ],
+    "followups": [
+      "When is stretching a pulse sufficient?",
+      "What happens if one clock stops during a handshake?"
+    ],
+    "theory": [
+      "CDC correctness needs both metastability containment and protocol correctness.",
+      "FPGA-specific primitive/placement advice must be adapted to the ASIC flow."
+    ],
+    "sources": [
+      {
+        "label": "AMD UG949: clock-domain crossing principles (FPGA guide)",
+        "url": "https://docs.amd.com/r/2024.2-English/ug949-vivado-design-methodology/Clock-Domain-Crossing"
+      }
+    ],
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A22",
+    "track": "RTL",
+    "title": "Do not synchronize a binary bus bit by bit",
+    "level": "Hard",
+    "kind": "Debug",
+    "lab": "Beyond Lab 7",
+    "minutes": 15,
+    "prompt": "Explain a possible failure for this crossing and propose a safe alternative for both occasional snapshots and a stream.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nFour-bit source counter changes 0111 → 1000\nEach bit uses an independent two-flop destination synchronizer\nDestination consumes the assembled bus as one coherent count",
+    "hint": "The bits can resolve on different destination cycles.",
+    "solution": [
+      "Destination can observe a mixed value that never existed at the source; independent bit synchronizers do not establish bus coherence.",
+      "For occasional snapshots, hold the data stable while a synchronized handshake controls capture and acknowledgment. For streaming data, use an asynchronous FIFO with a proven CDC implementation.",
+      "Gray-coded pointer crossings can help FIFO control because adjacent pointer codes differ by one bit, but still require synchronizers, physical bus-skew/delay constraints and correct pointer/full-empty logic."
+    ],
+    "rubric": [
+      "Explains incoherent multi-bit capture",
+      "Gives snapshot and streaming solutions",
+      "Does not claim Gray code alone solves all CDC issues"
+    ],
+    "followups": [
+      "Why can Gray bits still fail if their physical delays differ too much?",
+      "Can you safely cross arbitrary payload data by Gray-encoding it?"
+    ],
+    "theory": [
+      "Timing exceptions do not create synchronization hardware.",
+      "CDC methodology must include implementation constraints as well as RTL."
+    ],
+    "sources": [
+      {
+        "label": "AMD UG949: asynchronous clocks and CDC constraints",
+        "url": "https://docs.amd.com/r/en-US/ug949-vivado-design-methodology/Constraining-Asynchronous-Clock-Groups-and-Clock-Domain-Crossings"
+      }
+    ],
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A23",
+    "track": "RTL",
+    "title": "Ready/valid buffer under backpressure",
+    "level": "Medium",
+    "kind": "Code",
+    "lab": "Beyond Lab 7",
+    "minutes": 20,
+    "prompt": "Implement a one-entry elastic register. It must hold output data stable while stalled, accept a replacement in the same cycle as a dequeue, and clear valid on reset. Assume synchronous active-high reset and no combinational ready loop outside the module.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nInputs: clk, rst, in_valid, in_data[7:0], out_ready\nOutputs: in_ready, out_valid, out_data[7:0]\nTransfer = valid && ready at rising edge\nNo requirement to clear payload bits on reset",
+    "hint": "The slot can accept when it is empty or when its old item is being consumed.",
+    "solution": [
+      "Set in_ready = !out_valid || out_ready.",
+      "On reset clear out_valid. Otherwise, when in_ready, load out_valid from in_valid and capture payload if in_valid. When blocked, preserve both valid and payload.",
+      "Test empty fill, full stall, consume-only, simultaneous consume/replace, continuous throughput and reset. This is a synchronous buffer, not a CDC solution."
+    ],
+    "rubric": [
+      "Handles stalls without changing output payload",
+      "Supports simultaneous dequeue/replacement",
+      "Tests reset and all occupancy transitions"
+    ],
+    "followups": [
+      "What combinational timing path does in_ready create?",
+      "When would you add a skid buffer or registered ready?"
+    ],
+    "theory": [
+      "An elastic stage separates storage occupancy from payload.",
+      "A reference design still needs simulation and interface integration review."
+    ],
+    "sources": [
+      {
+        "label": "Arm AXI specification: valid-ready transport principles",
+        "url": "https://documentation-service.arm.com/static/68b03beb01ae952d9559f9eb"
+      },
+      {
+        "label": "Accellera: IEEE SystemVerilog standard download",
+        "url": "https://accellera.org/downloads/ieee"
+      }
+    ],
+    "solutionCode": "module elastic8(input logic clk, rst,\n  input logic in_valid, input logic [7:0] in_data,\n  output logic in_ready,\n  output logic out_valid, output logic [7:0] out_data,\n  input logic out_ready);\n  assign in_ready = !out_valid || out_ready;\n  always_ff @(posedge clk) begin\n    if (rst) out_valid <= 1'b0;\n    else if (in_ready) begin\n      out_valid <= in_valid;\n      if (in_valid) out_data <= in_data;\n    end\n  end\nendmodule",
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A24",
+    "track": "RTL",
+    "title": "Size the signed accumulator before coding",
+    "level": "Medium",
+    "kind": "Code",
+    "lab": "Beyond Lab 7",
+    "minutes": 12,
+    "prompt": "Derive the minimum signed accumulator width for an exact sum of 16 products of signed 8-bit operands. No saturation or truncation is allowed.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\na,b ∈ [−128,127]\nacc = Σ(a[i] × b[i]), i=0..15\nA proposed accumulator is signed [18:0] (19 bits)",
+    "hint": "The largest positive product is (−128)×(−128), not 127×127.",
+    "solution": [
+      "One product ranges from −16,256 to +16,384 and fits signed 16 bits.",
+      "The sum ranges from −260,096 to +262,144. Signed 19-bit maximum is +262,143, so the proposed width fails by one at the positive extreme; 20 bits is sufficient.",
+      "Declare operands/intermediates signed, preserve full product precision, and sign-extend before addition. Include all −128 operands and mixed-sign extrema in testing."
+    ],
+    "rubric": [
+      "Finds the positive extreme correctly",
+      "Derives 20-bit width rather than guessing",
+      "Handles signedness and extreme-value tests"
+    ],
+    "followups": [
+      "Would unsigned 8×8 need the same sum width?",
+      "How would saturation change the output contract?"
+    ],
+    "theory": [
+      "Range analysis should precede arithmetic implementation.",
+      "Expression sizing and signed casts can affect RTL behavior."
+    ],
+    "sources": [
+      {
+        "label": "Accellera: IEEE SystemVerilog standard download",
+        "url": "https://accellera.org/downloads/ieee"
+      }
+    ],
+    "numeric": {
+      "label": "Minimum signed accumulator width",
+      "answer": 20,
+      "tolerance": 0,
+      "unit": "bits",
+      "explanation": "The maximum +262,144 does not fit signed 19 bits, whose maximum is +262,143."
+    },
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A25",
+    "track": "Verification",
+    "title": "Assert stability during backpressure",
+    "level": "Medium",
+    "kind": "Code",
+    "lab": "Beyond Lab 7",
+    "minutes": 15,
+    "prompt": "Write an assertion for a synchronous ready/valid source. If valid is high and ready low at a sampled edge, the next sampled edge must still have valid high and the same data. Reset cancels the check.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nSignals: clk, rst_n, valid, ready, data[31:0]\nSource cannot withdraw a pending item\nThe next cycle may complete the transfer",
+    "hint": "Use a next-cycle implication. Require stable data even if ready becomes high on that next edge.",
+    "solution": [
+      "Use a non-overlapped implication from valid && !ready to valid && $stable(data), disabled during reset.",
+      "A correct checker catches withdrawal and payload mutation. Add a cover for a stall followed by acceptance to ensure useful stimulus.",
+      "This property does not prove correct payload values, no duplication, or eventual readiness; those need separate checks and assumptions."
+    ],
+    "rubric": [
+      "Checks both valid persistence and data stability",
+      "Uses the intended sampled-cycle relationship",
+      "Explains what the assertion does not prove"
+    ],
+    "followups": [
+      "Why can the property pass vacuously?",
+      "When does asynchronous disable iff differ from sampled reset gating?"
+    ],
+    "theory": [
+      "Assertions express local temporal contracts.",
+      "A passing property is useful only with its assumptions and reachable stimulus understood."
+    ],
+    "sources": [
+      {
+        "label": "Accellera: IEEE SystemVerilog standard download",
+        "url": "https://accellera.org/downloads/ieee"
+      },
+      {
+        "label": "Arm protocol checker: stability rules",
+        "url": "https://support.arm.com/documentation/dui0305/b/Assertion-Descriptions/Write-address-channel-checks?lang=en"
+      }
+    ],
+    "solutionCode": "assert property (@(posedge clk) disable iff (!rst_n)\n  (valid && !ready) |=> (valid && $stable(data)));\n\ncover property (@(posedge clk) disable iff (!rst_n)\n  (valid && !ready) ##1 (valid && ready));",
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A26",
+    "track": "Verification",
+    "title": "The scoreboard accepted a dropped packet",
+    "level": "Hard",
+    "kind": "Debug",
+    "lab": "Beyond Lab 7",
+    "minutes": 15,
+    "prompt": "Find why the test passed and design stronger completion checks. The DUT is an in-order packet transformer.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nInputs accepted: 100\nExpected queue pushes: 100\nOutputs observed and compared: 99\nAll 99 comparisons match\nTest ends after fixed 1,000 cycles\nScoreboard reports PASS because mismatch_count == 0",
+    "hint": "Correct observed outputs do not prove every required output arrived.",
+    "solution": [
+      "One expected transaction remains unmatched. The checker only detects wrong outputs that actually arrive.",
+      "Require expected queue drained, expected/actual counts consistent, no unexpected outputs, and a bounded completion timeout based on the protocol. Flag leftover transactions at end of test.",
+      "Build expected items from accepted inputs, observe actual outputs independently, and verify ordering/IDs as required. Test dropped, duplicated, reordered and corrupted outcomes."
+    ],
+    "rubric": [
+      "Identifies undrained expectation as a failure",
+      "Defines complete end-of-test conditions",
+      "Keeps predictor independent of DUT results"
+    ],
+    "followups": [
+      "How does the scoreboard change for out-of-order completion?",
+      "What if legal backpressure is unbounded?"
+    ],
+    "theory": [
+      "A scoreboard needs both comparison and completion semantics.",
+      "Timeout assumptions belong in the test contract."
+    ],
+    "sources": [
+      {
+        "label": "Accellera UVM 1.2 User Guide",
+        "url": "https://www.accellera.org/images/downloads/standards/uvm/uvm_users_guide_1.2.pdf"
+      }
+    ],
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A27",
+    "track": "Verification",
+    "title": "100% code coverage, missing the FIFO bug",
+    "level": "Medium",
+    "kind": "Design",
+    "lab": "Beyond Lab 7",
+    "minutes": 15,
+    "prompt": "Design a functional coverage plan that exposes the missing behavior. Assume depth 8, no fall-through, and simultaneous push/pop at full is legal only if both are accepted by the specified interface.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nLine coverage = 100%; branch coverage = 100%\nBug trigger: pointers wrap while push and pop occur together\nExisting tests: fill, drain, reset; no simultaneous transactions\nInterface uses independent valid/ready handshakes",
+    "hint": "Cover accepted operations and state transitions, not merely driven enables.",
+    "solution": [
+      "Cover occupancy 0,1,7,8; accepted push/pop combinations; pointer wrap events; and reset at relevant occupancy states.",
+      "Cross wrap with simultaneous accepted push/pop and boundary occupancy, excluding impossible combinations using the actual FIFO contract.",
+      "Pair coverage with a reference queue, overflow/underflow assertions and data-order checks. Coverage shows exercised scenarios, not correctness by itself."
+    ],
+    "rubric": [
+      "Samples accepted handshakes",
+      "Targets wrap × simultaneous-operation behavior",
+      "Uses independent correctness checks and legal-bin analysis"
+    ],
+    "followups": [
+      "How could an illegal-bin definition hide a real bug?",
+      "Why can 100% coverage still miss a wrong data value?"
+    ],
+    "theory": [
+      "Functional coverage reflects a verification plan.",
+      "Code coverage and functional coverage answer different questions."
+    ],
+    "sources": [
+      {
+        "label": "Cadence Jasper: code, functional, stimulus and checker coverage",
+        "url": "https://www.cadence.com/en_US/home/tools/system-design-and-verification/formal-and-static-verification/jasper-core-formal-apps.html"
+      }
+    ],
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  },
+  {
+    "id": "A28",
+    "track": "Verification",
+    "title": "A random failure needs a reproducible story",
+    "level": "Medium",
+    "kind": "Debug",
+    "lab": "Beyond Lab 7",
+    "minutes": 12,
+    "prompt": "Outline a debug sequence and the minimal replay record. Do not “fix” the test by deleting the failing seed.",
+    "artifact": "SYNTHETIC PRACTICE FIXTURE — not a tool run or foundry data\nRegression: 1 failure in 2,000 seeds\nFirst mismatch at cycle 831\nReset coincides with a stalled transaction\nRerun with same seed but different test build passes\nLogs omit simulator version and configuration",
+    "hint": "A seed identifies random choices only within a sufficiently fixed execution environment.",
+    "solution": [
+      "Capture seed, source/build revision, simulator/version/options, test configuration, generated inputs and first-error evidence. Reproduce with the same environment before reducing.",
+      "Inspect the reset/transaction contract, driver-monitor scheduling and scoreboard reset policy; identify the first divergence rather than the last symptom.",
+      "Reduce stimulus while preserving failure, add a targeted regression and relevant assertion, and retain the original seed. Re-run after a justified RTL or testbench fix."
+    ],
+    "rubric": [
+      "Defines a complete replay record",
+      "Checks DUT and verification-environment hypotheses",
+      "Turns the cause into a focused regression"
+    ],
+    "followups": [
+      "How can monitor sampling races create seed-sensitive failures?",
+      "What should happen to outstanding transactions when reset asserts?"
+    ],
+    "theory": [
+      "Reproducibility is more than recording a random seed.",
+      "Reset semantics must be shared by DUT, driver and checker."
+    ],
+    "sources": [
+      {
+        "label": "Accellera UVM 1.2 User Guide",
+        "url": "https://www.accellera.org/images/downloads/standards/uvm/uvm_users_guide_1.2.pdf"
+      }
+    ],
+    "sourceNote": "Further reading supports the method or tool role. The exercise, numerical data, and reference answers are original teaching examples; no licensed EDA execution is performed here."
+  }
+]
